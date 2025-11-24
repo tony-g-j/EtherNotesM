@@ -1,7 +1,13 @@
-import InicioSesion from "./screens/InicioSesion";
+
+import Principal from "./screens/Principal"; 
 
 export default function App() {
-  return (
-    <InicioSesion></InicioSesion>
-  );
-}
+
+   return ( 
+    <Principal>
+      
+    </Principal>
+
+  ); 
+
+  }
