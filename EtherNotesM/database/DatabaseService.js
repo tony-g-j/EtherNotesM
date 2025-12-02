@@ -1,110 +1,136 @@
-import { Platform } from 'react-native';
-import * as SQLite from 'expo-sqlite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-class DatabaseService {
-    constructor() {
-        this.db = null;
-        this.storageKey = 'usuarios';
+export class Database {
+  static instance = null;
+  initialized = false;
+
+  // Storage keys
+  USERS_KEY = '@users';
+  VAULTS_KEY = '@vaults';
+  NOTES_KEY = '@notes';
+
+  constructor() {}
+
+  static getInstance() {
+    if (!Database.instance) {
+      Database.instance = new Database();
     }
+    return Database.instance;
+  }
 
-    async initialize() {
-        if (Platform.OS === 'web') {
-            console.log('Usando LocalStorage para web');
-        } else {
-            console.log('Usando SQLite para móvil');
-            this.db = await SQLite.openDatabaseAsync('miapp.db');
-            await this.db.execAsync(`
-                CREATE TABLE IF NOT EXISTS usuarios (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre TEXT NOT NULL,
-                    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
-                );
-            `);
-        }
+  async initialize() {
+    if (this.initialized) return;
+
+    try {
+      // Initialize with empty arrays if not exists
+      const users = await AsyncStorage.getItem(this.USERS_KEY);
+      if (!users) await AsyncStorage.setItem(this.USERS_KEY, JSON.stringify([]));
+
+      const vaults = await AsyncStorage.getItem(this.VAULTS_KEY);
+      if (!vaults) await AsyncStorage.setItem(this.VAULTS_KEY, JSON.stringify([]));
+
+      const notes = await AsyncStorage.getItem(this.NOTES_KEY);
+      if (!notes) await AsyncStorage.setItem(this.NOTES_KEY, JSON.stringify([]));
+
+      this.initialized = true;
+    } catch (error) {
+      console.error('Database initialization error:', error);
+      throw error;
     }
+  }
 
-    async getAll() {
-        if (Platform.OS === 'web') {
-            const data = localStorage.getItem(this.storageKey);
-            return data ? JSON.parse(data) : [];
-        } else {
-            return await this.db.getAllAsync('SELECT * FROM usuarios ORDER BY id DESC');
-        }
+  // User methods
+  async saveUser(user) {
+    const users = await this.getUsers();
+    const existingIndex = users.findIndex(u => u.id === user.id);
+    
+    if (existingIndex >= 0) {
+      users[existingIndex] = user;
+    } else {
+      users.push(user);
     }
+    
+    await AsyncStorage.setItem(this.USERS_KEY, JSON.stringify(users));
+  }
 
-    async add(nombre) {
-        if (Platform.OS === 'web') {
-            const usuarios = await this.getAll();
+  async getUsers() {
+    const usersJson = await AsyncStorage.getItem(this.USERS_KEY);
+    return usersJson ? JSON.parse(usersJson) : [];
+  }
 
-            const nuevoUsuario = {
-                id: Date.now(),
-                nombre,
-                fecha_creacion: new Date().toISOString()
-            };
+  async getUserById(id) {
+    const users = await this.getUsers();
+    return users.find(user => user.id === id) || null;
+  }
 
-            usuarios.unshift(nuevoUsuario);
-            localStorage.setItem(this.storageKey, JSON.stringify(usuarios));
-            return nuevoUsuario;
+  async deleteUser(id) {
+    const users = await this.getUsers();
+    const filteredUsers = users.filter(user => user.id !== id);
+    await AsyncStorage.setItem(this.USERS_KEY, JSON.stringify(filteredUsers));
+  }
 
-        } else {
-            const result = await this.db.runAsync(
-                'INSERT INTO usuarios (nombre) VALUES(?)',
-                nombre
-            );
-            return {
-                id: result.lastInsertRowId,
-                nombre,
-                fecha_creacion: new Date().toISOString()
-            };
-        }
+  // Vault methods
+  async saveVault(vault) {
+    const vaults = await this.getVaults();
+    const existingIndex = vaults.findIndex(v => v.id === vault.id);
+    
+    if (existingIndex >= 0) {
+      vaults[existingIndex] = vault;
+    } else {
+      vaults.push(vault);
     }
+    
+    await AsyncStorage.setItem(this.VAULTS_KEY, JSON.stringify(vaults));
+  }
 
-    async update(id, nuevoNombre) {
-        if (Platform.OS === 'web') {
-            const usuarios = await this.getAll();
-            const index = usuarios.findIndex(u => u.id === id);
+  async getVaults() {
+    const vaultsJson = await AsyncStorage.getItem(this.VAULTS_KEY);
+    return vaultsJson ? JSON.parse(vaultsJson) : [];
+  }
 
-            if (index === -1) return null;
+  async getVaultsByUser(userId) {
+    const vaults = await this.getVaults();
+    return vaults.filter(vault => vault.userId === userId);
+  }
 
-            usuarios[index].nombre = nuevoNombre;
+  async deleteVault(id) {
+    const vaults = await this.getVaults();
+    const filteredVaults = vaults.filter(vault => vault.id !== id);
+    await AsyncStorage.setItem(this.VAULTS_KEY, JSON.stringify(filteredVaults));
+  }
 
-            localStorage.setItem(this.storageKey, JSON.stringify(usuarios));
-
-            return usuarios[index];
-
-        } else {
-            await this.db.runAsync(
-                'UPDATE usuarios SET nombre = ? WHERE id = ?',
-                [nuevoNombre, id]
-            );
-
-            const result = await this.db.getFirstAsync(
-                'SELECT * FROM usuarios WHERE id = ?',
-                id
-            );
-
-            return result;
-        }
+  // Note methods
+  async saveNote(note) {
+    const notes = await this.getNotes();
+    const existingIndex = notes.findIndex(n => n.id === note.id);
+    
+    if (existingIndex >= 0) {
+      notes[existingIndex] = note;
+    } else {
+      notes.push(note);
     }
+    
+    await AsyncStorage.setItem(this.NOTES_KEY, JSON.stringify(notes));
+  }
 
-    async remove(id) {
-        if (Platform.OS === 'web') {
-            const usuarios = await this.getAll();
-            const nuevos = usuarios.filter(u => u.id !== id);
+  async getNotes() {
+    const notesJson = await AsyncStorage.getItem(this.NOTES_KEY);
+    return notesJson ? JSON.parse(notesJson) : [];
+  }
 
-            localStorage.setItem(this.storageKey, JSON.stringify(nuevos));
+  async getNotesByVault(vaultId) {
+    const notes = await this.getNotes();
+    return notes.filter(note => note.vaultId === vaultId);
+  }
 
-            return true;
+  async deleteNote(id) {
+    const notes = await this.getNotes();
+    const filteredNotes = notes.filter(note => note.id !== id);
+    await AsyncStorage.setItem(this.NOTES_KEY, JSON.stringify(filteredNotes));
+  }
 
-        } else {
-            await this.db.runAsync(
-                'DELETE FROM usuarios WHERE id = ?',
-                id
-            );
-
-            return true;
-        }
-    }
+  async clearAll() {
+    await AsyncStorage.multiRemove([this.USERS_KEY, this.VAULTS_KEY, this.NOTES_KEY]);
+    await this.initialize();
+  }
 }
-
-export default new DatabaseService();

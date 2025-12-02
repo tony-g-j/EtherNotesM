@@ -1,18 +1,29 @@
-export class Usuario {
-    constructor(id, nombre, fechaCreacion) {
-        this.id = id;
-        this.nombre = nombre;
-        this.fechaCreacion = fechaCreacion || new Date().toISOString();
-    }
+export class User {
+  constructor(id, nombre, correo, contraseña, fechaCreacion) {
+    this.id = id;
+    this.nombre = nombre;
+    this.correo = correo;
+    this.contraseña = contraseña;
+    this.fechaCreacion = fechaCreacion || new Date();
+  }
 
-    // Validaciones del modelo
-    static validar(nombre) {
-        if (!nombre || nombre.trim().length === 0) {
-            throw new Error('El nombre no puede estar vacío');
-        }
-        if (nombre.length > 50) {
-            throw new Error('El nombre no puede tener más de 50 caracteres');
-        }
-        return true;
-    }
+  toJSON() {
+    return {
+      id: this.id,
+      nombre: this.nombre,
+      fechaCreacion: this.fechaCreacion,
+      correo: this.correo,
+      contraseña: this.contraseña,
+    };
+  }
+
+  static fromJSON(json) {
+    return new User(
+      json.id,
+      json.nombre,
+      json.correo,
+      json.contraseña,
+      new Date(json.fechaCreacion)
+    );
+  }
 }

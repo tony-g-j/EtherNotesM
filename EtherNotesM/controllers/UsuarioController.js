@@ -1,85 +1,67 @@
-import { Usuario } from '../models/usuario';
-import DatabaseService from '../database/DatabaseService';
+import { Database } from '../database/Database';
+import { User } from '../models/usuario';
 
-export class UsuarioController {
-    constructor() {
-        this.listeners = [];
-    }
+export class UserController {
+  constructor() {
+    this.db = Database.getInstance();
+  }
 
-    async initialize() {
-        await DatabaseService.initialize();
-    }
+  async createUser(nombre, correo, contraseña) {
+    await this.db.initialize();
+    
+    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    const user = new User(id, nombre, correo, contraseña);
+    
+    await this.db.saveUser(user.toJSON());
+    return user;
+  }
 
-    async obtenerUsuarios() {
-        try {
-            const data = await DatabaseService.getAll();
-            return data.map(u => new Usuario(u.id, u.nombre, u.fecha_creacion));
-        } catch (error) {
-            console.error('Error al obtener usuarios:', error);
-            throw new Error('No se pudieron cargar los usuarios');
-        }
-    }
+  async getAllUsers() {
+    await this.db.initialize();
+    const users = await this.db.getUsers();
+    return users.map(user => User.fromJSON(user));
+  }
 
-    async crearUsuario(nombre) {
-        try {
-            Usuario.validar(nombre);
+  async getUserById(id) {
+    await this.db.initialize();
+    const user = await this.db.getUserById(id);
+    return user ? User.fromJSON(user) : null;
+  }
 
-            const nuevoUsuario = await DatabaseService.add(nombre.trim());
+  async updateUser(id, updates) {
+    await this.db.initialize();
+    const user = await this.db.getUserById(id);
+    
+    if (!user) return null;
+    
+    const updatedUser = { ...user, ...updates };
+    await this.db.saveUser(updatedUser);
+    return User.fromJSON(updatedUser);
+  }
 
-            this.notifyListeners();
+  async deleteUser(id) {
+    await this.db.initialize();
+    const user = await this.db.getUserById(id);
+    
+    if (!user) return false;
+    
+    await this.db.deleteUser(id);
+    return true;
+  }
 
-            return new Usuario(
-                nuevoUsuario.id,
-                nuevoUsuario.nombre,
-                nuevoUsuario.fecha_creacion
-            );
-        } catch (error) {
-            console.error('Error al crear usuario:', error);
-            throw error;
-        }
-    }
+  async authenticateUser(correo, contraseña) {
+    await this.db.initialize();
+    const users = await this.db.getUsers();
+    const user = users.find(u => u.correo === correo && u.contraseña === contraseña);
+    
+    return user ? User.fromJSON(user) : null;
+  }
 
-    async actualizarUsuario(id, nuevoNombre) {
-        try {
-            Usuario.validar(nuevoNombre);
-
-            const actualizado = await DatabaseService.update(id, nuevoNombre.trim());
-
-            this.notifyListeners();
-
-            return new Usuario(
-                actualizado.id,
-                actualizado.nombre,
-                actualizado.fecha_creacion
-            );
-        } catch (error) {
-            console.error('Error al actualizar usuario:', error);
-            throw error;
-        }
-    }
-
-    async eliminarUsuario(id) {
-        try {
-            await DatabaseService.remove(id);
-
-            this.notifyListeners();
-
-            return true;
-        } catch (error) {
-            console.error('Error al eliminar usuario:', error);
-            throw error;
-        }
-    }
-
-    addListener(callback) {
-        this.listeners.push(callback);
-    }
-
-    removeListener(callback) {
-        this.listeners = this.listeners.filter(l => l !== callback);
-    }
-
-    notifyListeners() {
-        this.listeners.forEach(callback => callback());
-    }
+  async getUserByEmail(correo) {
+    await this.db.initialize();
+    const users = await this.db.getUsers();
+    const user = users.find(u => u.correo === correo);
+    
+    return user ? User.fromJSON(user) : null;
+  }
 }
