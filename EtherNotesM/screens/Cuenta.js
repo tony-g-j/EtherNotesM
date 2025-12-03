@@ -8,10 +8,15 @@ import {
   Image 
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get("window");
 
 export default function Cuenta() {
+
+  // 🔥 EL HOOK DEBE IR AQUÍ
+  const navigation = useNavigation();
+
   return (
     <View style={styles.MainContainer}>
       <View style={styles.Superior}>
@@ -35,7 +40,7 @@ export default function Cuenta() {
       <View style={styles.content}>
         <Image
           style={styles.profileImg}
-          source={require("../assets/favicon.png")} 
+          source={require("../assets/favicon.png")}
           resizeMode="cover"
         />
 
@@ -54,6 +59,14 @@ export default function Cuenta() {
             </Text>
           </View>
 
+          {/* 🔥 YA FUNCIONA */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.navigate("Principal")}
+          >
+            <Text style={styles.backText}>Volver</Text>
+          </TouchableOpacity>
+
           <View style={styles.subContainer}>
             <Text style={[styles.textB, { textAlign: 'center' }]}>
               Contraseña:
@@ -66,9 +79,11 @@ export default function Cuenta() {
           </View>
 
           <View style={styles.subContainer}>
-             <Text style={[styles.textB, {textAlign:'center'}]}>Ajustes de la cuenta</Text>
+            <Text style={[styles.textB, { textAlign:'center' }]}>
+              Ajustes de la cuenta
+            </Text>
 
-             <TouchableOpacity style={styles.btn1}>
+            <TouchableOpacity style={styles.btn1}>
               <Text style={[styles.textB, { color: '#FFF' }]}>
                 Borrar Historial
               </Text>
@@ -171,5 +186,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 5
+  },
+    backButton: {
+    backgroundColor: "#1a1a42",
+    padding: 12,
+    paddingHorizontal: 40,
+    borderRadius: 16,
+    marginTop: 20,
+  },
+
+  backText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   }
 });

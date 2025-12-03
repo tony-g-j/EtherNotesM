@@ -1,13 +1,23 @@
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import loggin from '../screens/InicioSesion';
-import cuenta from '../screens/Cuenta';
+import Loggin from '../screens/InicioSesion';
+import Tabs from './Tabs'; 
 
-const stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator();
 
 export default function RootNav() {
   return (
-    <stack.Navigator>
-        <stack.Screen name='loggin' component={cuenta} options={{headerShown: false}}/>
-    </stack.Navigator>
+    <Stack.Navigator initialRouteName="loggin" screenOptions={{headerShown: false}}>
+      
+      <Stack.Screen 
+        name="loggin" 
+        component={Loggin} 
+      />
+
+      <Stack.Screen 
+        name="Tabs" 
+        component={Tabs}
+      />
+
+    </Stack.Navigator>
   );
 }

@@ -11,33 +11,40 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function Principal() {
+// 1. ACEPTAR LA PROP 'navigation'
+// Asumo que este componente está siendo renderizado por un Stack.Screenr
+export default function Principal({ navigation }) {
+  // --- Estados para UI y Data ---
   const [modalVisible, setModalVisible] = useState(false);
   const [modalCarpetaVisible, setModalCarpetaVisible] = useState(false);
 
+  // Estados para el formulario de notas
   const [titulo, setTitulo] = useState("");
   const [subtitulo, setSubtitulo] = useState("");
   const [contenido, setContenido] = useState("");
   const [fecha, setFecha] = useState("");
-
   const [carpetaSeleccionada, setCarpetaSeleccionada] = useState("Personal");
-  const [carpetaVista, setCarpetaVista] = useState(null);
 
+  // Estados para la navegación y filtros
   const [notas, setNotas] = useState([]);
-  const [editando, setEditando] = useState(null);
+  const [editando, setEditando] = useState(null); // Índice de la nota a editar
+  // Mantengo 'seccion' pero la uso para las vistas de Notas/Carpetas/Búsqueda.
+  // Las secciones de 'Cuenta' y 'Configuracion' ahora usarán 'navigation'.
+  const [seccion, setSeccion] = useState("notas"); // 'notas', 'folders', 'folder'
+  const [carpetaVista, setCarpetaVista] = useState(null); // Carpeta seleccionada para ver
+  const [searchText, setSearchText] = useState("");
 
-  const [seccion, setSeccion] = useState("notas");
-
+  // Estado de las carpetas
   const [carpetasDisponibles, setCarpetasDisponibles] = useState([
     "Personal",
     "Escuela",
   ]);
-
   const [nuevaCarpetaNombre, setNuevaCarpetaNombre] = useState("");
 
-  const [searchText, setSearchText] = useState("");
+  // --- Funciones de Lógica (sin cambios) ---
 
   const abrirModalNuevaNota = () => {
+    // Limpiar estados para nueva nota
     setTitulo("");
     setSubtitulo("");
     setContenido("");
@@ -48,28 +55,25 @@ export default function Principal() {
   };
 
   const guardarNota = () => {
+    if (!titulo.trim() || !contenido.trim()) return; // Validación básica
+
+    const nuevaNota = {
+      titulo,
+      subtitulo,
+      fecha: fecha || new Date().toLocaleDateString(), // Fecha predeterminada
+      contenido,
+      carpeta: carpetaSeleccionada,
+    };
+
     if (editando !== null) {
+      // Editar nota existente
       const nuevas = [...notas];
-      nuevas[editando] = {
-        titulo,
-        subtitulo,
-        fecha,
-        contenido,
-        carpeta: carpetaSeleccionada,
-      };
+      nuevas[editando] = nuevaNota;
       setNotas(nuevas);
       setEditando(null);
     } else {
-      setNotas([
-        ...notas,
-        {
-          titulo,
-          subtitulo,
-          fecha,
-          contenido,
-          carpeta: carpetaSeleccionada,
-        },
-      ]);
+      // Crear nueva nota
+      setNotas([...notas, nuevaNota]);
     }
 
     setModalVisible(false);
@@ -87,6 +91,7 @@ export default function Principal() {
   };
 
   const eliminarNota = (i) => {
+    // Usamos el índice para eliminar
     setNotas(notas.filter((_, idx) => idx !== i));
   };
 
@@ -99,15 +104,35 @@ export default function Principal() {
     setModalCarpetaVisible(false);
   };
 
+  // --- Memoización para Filtros (sin cambios) ---
+
+  // Filtro principal de notas (sección 'notas')
   const notasFiltradasGeneral = useMemo(() => {
-    if (seccion !== "notas" || searchText.trim() === "") {
+    if (seccion !== "notas" && seccion !== "folder") {
       return notas;
     }
-    const lowerSearchText = searchText.toLowerCase();
 
-    return notas.filter((n) => n.titulo.toLowerCase().includes(lowerSearchText));
-  }, [notas, seccion, searchText]);
+    let filteredNotes = notas;
 
+    // Filtrar por carpeta si estamos en la vista de carpeta
+    if (seccion === "folder" && carpetaVista !== null) {
+      filteredNotes = notas.filter((n) => n.carpeta === carpetaVista);
+    }
+
+    // Filtrar por búsqueda de texto
+    if (searchText.trim() !== "") {
+      const lowerSearchText = searchText.toLowerCase();
+      filteredNotes = filteredNotes.filter(
+        (n) =>
+          n.titulo.toLowerCase().includes(lowerSearchText) ||
+          n.contenido.toLowerCase().includes(lowerSearchText)
+      );
+    }
+
+    return filteredNotes;
+  }, [notas, seccion, searchText, carpetaVista]);
+
+  // Filtro de carpetas (sección 'folders')
   const carpetasFiltradas = useMemo(() => {
     if (seccion !== "folders" || searchText.trim() === "") {
       return carpetasDisponibles;
@@ -119,52 +144,56 @@ export default function Principal() {
     );
   }, [carpetasDisponibles, seccion, searchText]);
 
+  // --- Renderizado de Contenido Principal (Simplificado) ---
 
   const renderContenido = () => {
+    // 1. Vista de Carpeta Individual
     if (seccion === "folder" && carpetaVista !== null) {
+      const notasDeEstaCarpeta = notasFiltradasGeneral;
 
-      let filtradasPorCarpeta = notas.filter((n) => n.carpeta === carpetaVista);
-
-      let filtradasFinal = filtradasPorCarpeta;
-      if (searchText.trim() !== "") {
-        const lowerSearchText = searchText.toLowerCase();
-        filtradasFinal = filtradasPorCarpeta.filter((n) =>
-          n.titulo.toLowerCase().includes(lowerSearchText)
-        );
-      }
-      
       return (
         <>
           <Text style={styles.title}>Carpeta: {carpetaVista}</Text>
 
-          {filtradasFinal.length === 0 && (
-            <Text style={{ color: "white", fontSize: 20 }}>
+          {notasDeEstaCarpeta.length === 0 && (
+            <Text
+              style={{
+                color: "white",
+                fontSize: 20,
+                textAlign: "center",
+                marginTop: 50,
+              }}
+            >
               {searchText.trim() !== ""
                 ? `No se encontraron notas con el título "${searchText}" en esta carpeta.`
-                : "Sin notas aquí."}
+                : "Sin notas aquí. Crea una nueva nota y asígnale esta carpeta."}
             </Text>
           )}
 
-          {filtradasFinal.map((n, index) => {
-
-             const originalIndex = notas.findIndex(
-              (nota) => nota.titulo === n.titulo && nota.contenido === n.contenido && nota.carpeta === n.carpeta
+          {notasDeEstaCarpeta.map((n, index) => {
+            // Necesitamos el índice original para editar/eliminar
+            const originalIndex = notas.findIndex(
+              (nota) =>
+                nota.titulo === n.titulo &&
+                nota.contenido === n.contenido &&
+                nota.carpeta === n.carpeta
             );
 
             return (
-              <View key={originalIndex} style={styles.noteBox}>
+              <View key={index} style={styles.noteBox}>
                 <Text style={styles.noteTitle}>{n.titulo}</Text>
                 <Text style={styles.noteSubtitle}>{n.subtitulo}</Text>
-                <Text style={styles.noteDate}>{n.fecha}</Text>
-                <Text style={styles.noteContent}>{n.contenido}</Text>
+                <Text style={styles.noteDate}>Fecha: {n.fecha}</Text>
+                <Text style={styles.noteContent} numberOfLines={3}>
+                  {n.contenido}
+                </Text>
 
                 <View style={styles.actionsRow}>
-                  {/* Edición/Eliminación usando el índice original encontrado */}
                   <TouchableOpacity onPress={() => editarNota(originalIndex)}>
-                    <Ionicons name="create-outline" size={30} color="yellow" />
+                    <Ionicons name="create-outline" size={30} color="#ffeb3b" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => eliminarNota(originalIndex)}>
-                    <Ionicons name="trash-outline" size={30} color="red" />
+                    <Ionicons name="trash-outline" size={30} color="#f44336" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -174,71 +203,105 @@ export default function Principal() {
       );
     }
 
+    // 2. Vista de Listado de Carpetas
     if (seccion === "folders") {
       return (
         <>
-          <Text style={styles.title}>Carpetas</Text>
+          <Text style={styles.title}>
+            Carpetas ({carpetasDisponibles.length})
+          </Text>
 
           {carpetasFiltradas.length === 0 && (
-            <Text style={{ color: "white", fontSize: 20 }}>
+            <Text
+              style={{
+                color: "white",
+                fontSize: 20,
+                textAlign: "center",
+                marginTop: 50,
+              }}
+            >
               {searchText.trim() !== ""
                 ? `No se encontraron carpetas con el título "${searchText}".`
-                : "Aún no tienes carpetas."}
+                : "Aún no tienes carpetas. ¡Crea una nueva!"}
             </Text>
           )}
 
           {carpetasFiltradas.map((c) => (
             <TouchableOpacity
               key={c}
-              style={styles.noteBox}
+              style={styles.folderBox}
               onPress={() => {
                 setCarpetaVista(c);
                 setSeccion("folder");
-                setSearchText(""); 
+                setSearchText(""); // Limpiar búsqueda al cambiar de vista
               }}
             >
-              <Text style={styles.noteTitle}>{c}</Text>
+              <Ionicons name="folder" size={30} color="#ffeb3b" />
+              <Text style={styles.folderTitle}>{c}</Text>
+              <Text style={styles.folderCount}>
+                ({notas.filter((n) => n.carpeta === c).length} notas)
+              </Text>
             </TouchableOpacity>
           ))}
         </>
       );
     }
 
+    // **3. Vistas Genéricas (Configuración o Cuenta)**
+
+    // 4. Vista de Todas las Notas (seccion 'notas' - Default)
     return (
       <>
-        <Text style={styles.title}>Tus notas</Text>
+        <Text style={styles.title}>
+          Todas tus notas ({notasFiltradasGeneral.length})
+        </Text>
 
         {notasFiltradasGeneral.length === 0 && (
-          <Text style={{ color: "white", fontSize: 20 }}>
+          <Text
+            style={{
+              color: "white",
+              fontSize: 20,
+              textAlign: "center",
+              marginTop: 50,
+            }}
+          >
             {searchText.trim() !== ""
               ? "No se encontraron notas con ese título."
-              : "Aún no tienes notas."}
+              : "Aún no tienes notas. ¡Empieza a crear una!"}
           </Text>
         )}
 
-        {notasFiltradasGeneral.map((n) => {
-
+        {notasFiltradasGeneral.map((n, index) => {
+          // Necesitamos el índice original para editar/eliminar
           const originalIndex = notas.findIndex(
-            (nota) => nota.titulo === n.titulo && nota.contenido === n.contenido
+            (nota) =>
+              nota.titulo === n.titulo &&
+              nota.contenido === n.contenido &&
+              nota.carpeta === n.carpeta
           );
 
           return (
-            <View key={originalIndex} style={styles.noteBox}>
+            <View key={index} style={styles.noteBox}>
               <Text style={styles.noteTitle}>{n.titulo}</Text>
               <Text style={styles.noteSubtitle}>{n.subtitulo}</Text>
-              <Text style={styles.noteDate}>{n.fecha}</Text>
+              <Text style={styles.noteDate}>Fecha: {n.fecha}</Text>
 
-              <Text style={styles.folderTag}>Carpeta: {n.carpeta}</Text>
+              <View style={styles.tagContainer}>
+                <Ionicons name="folder-outline" size={16} color="#9cd1ff" />
+                <Text style={styles.folderTag}>Carpeta: {n.carpeta}</Text>
+              </View>
 
-              <Text style={styles.noteContent}>{n.contenido}</Text>
+              <Text style={styles.noteContent} numberOfLines={3}>
+                {n.contenido}
+              </Text>
 
               <View style={styles.actionsRow}>
                 <TouchableOpacity onPress={() => editarNota(originalIndex)}>
-                  <Ionicons name="create-outline" size={30} color="yellow" />
+                  <Ionicons name="create-outline" size={30} color="#ffeb3b" />
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => eliminarNota(originalIndex)}>
-                  <Ionicons name="trash-outline" size={30} color="red" />
+                  <Ionicons name="trash-outline" size={30} color="#f44336" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -248,80 +311,114 @@ export default function Principal() {
     );
   };
 
-
   return (
     <SafeAreaView style={styles.container}>
-
+      {/* Barra Superior (Búsqueda y Añadir) */}
       <View style={styles.topBar}>
-        <Ionicons name="search" size={54} color="white" />
+        <Ionicons name="search" size={30} color="#bfbfd9" />
 
         <TextInput
           placeholder={
             seccion === "folders"
               ? "Buscar carpetas..."
-              : "Buscar por Título..."
+              : "Buscar por Título o Contenido..."
           }
           placeholderTextColor="#7a7ca1ff"
           style={styles.searchInput}
           value={searchText}
           onChangeText={setSearchText}
-
           editable={
             seccion === "notas" || seccion === "folder" || seccion === "folders"
           }
         />
 
         <TouchableOpacity
+          style={styles.addButton}
           onPress={() => {
             if (seccion === "folders") setModalCarpetaVisible(true);
             else abrirModalNuevaNota();
           }}
         >
-          <Ionicons name="add-circle-outline" size={54} color="white" />
+          <Ionicons name="add" size={30} color="#bfbfd9" />
         </TouchableOpacity>
       </View>
 
-
+      {/* Contenido Principal (Sidebar + ScrollView) */}
       <View style={styles.layout}>
+        {/* Sidebar / Navegación */}
         <View style={styles.sidebar}>
-          <TouchableOpacity 
+          <TouchableOpacity
+            style={[styles.navItem, seccion === "notas" && styles.navItemSelected]}
             onPress={() => {
               setSeccion("notas");
-              setSearchText(""); 
+              setCarpetaVista(null);
+              setSearchText("");
             }}
           >
-            <Ionicons name="document-text-outline" size={54} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={() => {
-              setSeccion("folders");
-              setSearchText(""); 
-            }}
-          >
-            <Ionicons name="folder-outline" size={54} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setSeccion("perfil")}>
-            <Ionicons name="person-circle-outline" size={54} color="white" />
+            <Ionicons name="document-text-outline" size={30} color="white" />
+            <Text style={styles.navText}>Notas</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setSeccion("config")}
-            style={{ marginTop: "auto", marginBottom: 20 }}
+            style={[
+              styles.navItem,
+              seccion === "folders" && styles.navItemSelected,
+            ]}
+            onPress={() => {
+              setSeccion("folders");
+              setCarpetaVista(null);
+              setSearchText("");
+            }}
           >
-            <Ionicons name="settings-outline" size={54} color="white" />
+            <Ionicons name="folder-outline" size={30} color="white" />
+            <Text style={styles.navText}>Carpetas</Text>
+          </TouchableOpacity>
+
+          {/* 2. IMPLEMENTACIÓN DE NAVIGATION EN CUENTA */}
+          <TouchableOpacity
+            style={[
+              styles.navItem,
+              // No usamos 'seccion === 'Cuenta'' porque navegaremos fuera
+            ]}
+            onPress={() => {
+              // Navegar a la pantalla 'CuentaScreen'
+              navigation.navigate('Cuenta');
+            }}
+          >
+            <Ionicons name="person-circle-outline" size={30} color="white" />
+            <Text style={styles.navText}>Cuenta</Text>
+          </TouchableOpacity>
+
+          {/* 2. IMPLEMENTACIÓN DE NAVIGATION EN CONFIGURACIÓN */}
+          <TouchableOpacity
+            style={[
+              styles.navItem,
+              { marginTop: "auto" },
+              // No usamos 'seccion === 'Configuracion'' porque navegaremos fuera
+            ]}
+            onPress={() => {
+              // Navegar a la pantalla 'ConfiguracionScreen'
+              navigation.navigate('Configuracion');
+            }}
+          >
+            <Ionicons name="settings-outline" size={30} color="white" />
+            <Text style={styles.navText}>configuracion</Text>
           </TouchableOpacity>
         </View>
 
-
+        {/* Área de Contenido Dinámico */}
         <ScrollView style={styles.mainContent}>
           {renderContenido()}
         </ScrollView>
       </View>
 
-
-      <Modal animationType="slide" transparent visible={modalVisible}>
+      {/* Modal de Nueva/Editar Nota (sin cambios) */}
+      <Modal
+        animationType="slide"
+        transparent
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
@@ -330,7 +427,7 @@ export default function Principal() {
 
             <TextInput
               style={styles.input}
-              placeholder="Título"
+              placeholder="Título (Obligatorio)"
               placeholderTextColor="#bfbfd9"
               value={titulo}
               onChangeText={setTitulo}
@@ -353,17 +450,27 @@ export default function Principal() {
             />
 
             <TextInput
-              style={[styles.input, { height: 100 }]} 
-              placeholder="Contenido de la nota"
+              style={[styles.input, { height: 100, textAlignVertical: "top" }]}
+              placeholder="Contenido de la nota (Obligatorio)"
               placeholderTextColor="#bfbfd9"
               multiline
               value={contenido}
               onChangeText={setContenido}
             />
 
-            <Text style={styles.folderLabel}>Carpeta:</Text>
+            <Text style={styles.folderLabel}>
+              Carpeta seleccionada: {carpetaSeleccionada}
+            </Text>
 
-            <ScrollView style={{ maxHeight: 150, marginBottom: 10 }}>
+            <ScrollView
+              style={{
+                maxHeight: 100,
+                marginBottom: 10,
+                borderWidth: 1,
+                borderColor: "#222556",
+                borderRadius: 8,
+              }}
+            >
               {carpetasDisponibles.map((c) => (
                 <TouchableOpacity
                   key={c}
@@ -402,8 +509,13 @@ export default function Principal() {
         </View>
       </Modal>
 
-
-      <Modal animationType="slide" transparent visible={modalCarpetaVisible}>
+      {/* Modal de Nueva Carpeta (sin cambios) */}
+      <Modal
+        animationType="slide"
+        transparent
+        visible={modalCarpetaVisible}
+        onRequestClose={() => setModalCarpetaVisible(false)}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Nueva carpeta</Text>
@@ -438,9 +550,10 @@ export default function Principal() {
   );
 }
 
-
+// Los estilos se mantienen exactamente igual.
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f4f4f4ff" },
+  // Se mantiene el fondo oscuro para consistencia con el tema que elegiste
+  container: { flex: 1, backgroundColor: "#0f172a" },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -456,6 +569,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontSize: 28,
   },
+  addButton: {
+    backgroundColor: "#22375a",
+    borderRadius: 8,
+    width: 50,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 5,
+  },
   layout: { flex: 1, flexDirection: "row" },
   sidebar: {
     width: 80,
@@ -465,6 +591,21 @@ const styles = StyleSheet.create({
     gap: 60,
     borderRightWidth: 2,
     borderRightColor: "#222556",
+  },
+  navItem: {
+    alignItems: "center",
+    paddingVertical: 10,
+    width: "100%",
+  },
+  navItemSelected: {
+    backgroundColor: "#222556",
+    borderLeftColor: "#ffeb3b", // Color de resalte para la navegación
+    borderLeftWidth: 4,
+  },
+  navText: {
+    color: "white",
+    fontSize: 12,
+    marginTop: 5,
   },
   mainContent: {
     flex: 1,
@@ -476,26 +617,68 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "white",
     marginBottom: 20,
+    // Se añaden bordes para mejor separación visual
+    borderBottomWidth: 1,
+    borderBottomColor: "#222556",
+    paddingBottom: 10,
   },
   noteBox: {
     backgroundColor: "#22375a",
     padding: 15,
     borderRadius: 10,
     marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 1,
+    elevation: 3,
   },
   noteTitle: { fontSize: 26, fontWeight: "bold", color: "white" },
   noteSubtitle: { fontSize: 20, color: "#d1d1d1" },
   noteDate: { fontSize: 16, color: "#b7b7b7", marginBottom: 10 },
   noteContent: { fontSize: 18, color: "white", marginBottom: 10 },
+  tagContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 5,
+    gap: 5,
+  },
   folderTag: {
     fontSize: 16,
     color: "#9cd1ff",
     marginBottom: 6,
   },
+  folderBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#22375a", // Mismo fondo que noteBox
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 1,
+    elevation: 3,
+  },
+  folderTitle: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "white",
+    flex: 1,
+  },
+  folderCount: {
+    fontSize: 18,
+    color: "#b7b7b7",
+  },
   actionsRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 20,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#222556",
   },
   modalContainer: {
     flex: 1,
@@ -507,12 +690,15 @@ const styles = StyleSheet.create({
     margin: 20,
     padding: 20,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#475569",
   },
   modalTitle: {
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 15,
     color: "white",
+    textAlign: "center",
   },
   input: {
     fontSize: 18,
@@ -521,6 +707,8 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 8,
     color: "white",
+    borderWidth: 1,
+    borderColor: "#475569",
   },
   folderLabel: {
     marginTop: 10,
