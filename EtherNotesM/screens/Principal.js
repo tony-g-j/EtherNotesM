@@ -28,7 +28,6 @@ export default function Principal() {
 
   const [seccion, setSeccion] = useState("notas");
 
-  // Carpetas iniciales: Solo "Personal" y "Escuela"
   const [carpetasDisponibles, setCarpetasDisponibles] = useState([
     "Personal",
     "Escuela",
@@ -36,7 +35,6 @@ export default function Principal() {
 
   const [nuevaCarpetaNombre, setNuevaCarpetaNombre] = useState("");
 
-  // Estado para el buscador
   const [searchText, setSearchText] = useState("");
 
   const abrirModalNuevaNota = () => {
@@ -101,36 +99,32 @@ export default function Principal() {
     setModalCarpetaVisible(false);
   };
 
-  // LÓGICA DE FILTRADO PARA LA SECCIÓN "NOTAS" GENERALES
   const notasFiltradasGeneral = useMemo(() => {
     if (seccion !== "notas" || searchText.trim() === "") {
       return notas;
     }
     const lowerSearchText = searchText.toLowerCase();
-    // Filtro general, solo por Título
+
     return notas.filter((n) => n.titulo.toLowerCase().includes(lowerSearchText));
   }, [notas, seccion, searchText]);
 
-  // LÓGICA DE FILTRADO PARA CARPETAS (SECCIÓN "FOLDERS")
   const carpetasFiltradas = useMemo(() => {
     if (seccion !== "folders" || searchText.trim() === "") {
       return carpetasDisponibles;
     }
     const lowerSearchText = searchText.toLowerCase();
-    // Filtro de carpetas, solo por Nombre de Carpeta
+
     return carpetasDisponibles.filter((c) =>
       c.toLowerCase().includes(lowerSearchText)
     );
   }, [carpetasDisponibles, seccion, searchText]);
 
-  // -----------------------------------------------------
 
   const renderContenido = () => {
     if (seccion === "folder" && carpetaVista !== null) {
-      // 1. Filtrar por la carpeta actual
+
       let filtradasPorCarpeta = notas.filter((n) => n.carpeta === carpetaVista);
 
-      // 2. Aplicar el filtro de búsqueda por TÍTULO (Solo si hay texto de búsqueda)
       let filtradasFinal = filtradasPorCarpeta;
       if (searchText.trim() !== "") {
         const lowerSearchText = searchText.toLowerCase();
@@ -152,7 +146,7 @@ export default function Principal() {
           )}
 
           {filtradasFinal.map((n, index) => {
-             // Encuentra el índice original para edición/eliminación
+
              const originalIndex = notas.findIndex(
               (nota) => nota.titulo === n.titulo && nota.contenido === n.contenido && nota.carpeta === n.carpeta
             );
@@ -193,7 +187,6 @@ export default function Principal() {
             </Text>
           )}
 
-          {/* 🔥 USO DEL NUEVO ESTADO FILTRADO: carpetasFiltradas */}
           {carpetasFiltradas.map((c) => (
             <TouchableOpacity
               key={c}
@@ -201,7 +194,7 @@ export default function Principal() {
               onPress={() => {
                 setCarpetaVista(c);
                 setSeccion("folder");
-                setSearchText(""); // Limpiar búsqueda al entrar en la vista de carpeta
+                setSearchText(""); 
               }}
             >
               <Text style={styles.noteTitle}>{c}</Text>
@@ -211,7 +204,6 @@ export default function Principal() {
       );
     }
 
-    // Sección principal de notas
     return (
       <>
         <Text style={styles.title}>Tus notas</Text>
@@ -225,7 +217,7 @@ export default function Principal() {
         )}
 
         {notasFiltradasGeneral.map((n) => {
-          // Encuentra el índice original para edición/eliminación
+
           const originalIndex = notas.findIndex(
             (nota) => nota.titulo === n.titulo && nota.contenido === n.contenido
           );
@@ -256,11 +248,10 @@ export default function Principal() {
     );
   };
 
-  // -----------------------------------------------------
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* TOP BAR */}
+
       <View style={styles.topBar}>
         <Ionicons name="search" size={54} color="white" />
 
@@ -274,13 +265,12 @@ export default function Principal() {
           style={styles.searchInput}
           value={searchText}
           onChangeText={setSearchText}
-          // 🔥 CORRECCIÓN: Editable en notas, carpeta o folders
+
           editable={
             seccion === "notas" || seccion === "folder" || seccion === "folders"
           }
         />
 
-        {/* 🔵 BOTÓN DE AGREGAR */}
         <TouchableOpacity
           onPress={() => {
             if (seccion === "folders") setModalCarpetaVisible(true);
@@ -291,9 +281,8 @@ export default function Principal() {
         </TouchableOpacity>
       </View>
 
-      {/* LAYOUT */}
+
       <View style={styles.layout}>
-        {/* Sidebar */}
         <View style={styles.sidebar}>
           <TouchableOpacity 
             onPress={() => {
@@ -307,7 +296,7 @@ export default function Principal() {
           <TouchableOpacity 
             onPress={() => {
               setSeccion("folders");
-              setSearchText(""); // Limpiar búsqueda al ir a la sección de carpetas
+              setSearchText(""); 
             }}
           >
             <Ionicons name="folder-outline" size={54} color="white" />
@@ -325,13 +314,13 @@ export default function Principal() {
           </TouchableOpacity>
         </View>
 
-        {/* CONTENIDO */}
+
         <ScrollView style={styles.mainContent}>
           {renderContenido()}
         </ScrollView>
       </View>
 
-      {/* MODAL DE NOTA */}
+
       <Modal animationType="slide" transparent visible={modalVisible}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -413,7 +402,7 @@ export default function Principal() {
         </View>
       </Modal>
 
-      {/* MODAL NUEVO — AGREGAR CARPETA */}
+
       <Modal animationType="slide" transparent visible={modalCarpetaVisible}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -449,9 +438,9 @@ export default function Principal() {
   );
 }
 
-// (ESTILOS IGUALES)
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: "#f4f4f4ff" },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
