@@ -1,13 +1,18 @@
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {NavigationContainer} from '@react-navigation/native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import RootNav from './navigation/RootNav';
+import Tabs from './navigation/Tabs';
 
-import Principal from "./screens/Principal"; 
 
 export default function App() {
-
-   return ( 
-    <Principal>
-      
-    </Principal>
-
-  ); 
-
-  }
+  return (
+    <GestureHandlerRootView>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <RootNav/>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
