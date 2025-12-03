@@ -7,7 +7,7 @@ const stack = createNativeStackNavigator();
 export default function RootNav() {
   return (
     <stack.Navigator>
-        <stack.Screen name='loggin' component={cuenta} options={{headerShown: false}}/>
+        <stack.Screen name='loggin' component={loggin} options={{headerShown: false}}/>
     </stack.Navigator>
   );
 }
