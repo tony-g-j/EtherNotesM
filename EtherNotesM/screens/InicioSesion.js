@@ -1,7 +1,8 @@
-import { Text, StyleSheet, View, TextInput, Image, ActivityIndicator, Dimensions, TouchableOpacity } from 'react-native'
+import { Text, StyleSheet, View, TextInput, ActivityIndicator, Dimensions, TouchableOpacity, Modal } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import Svg, { Path } from "react-native-svg";
 const {width, height} = Dimensions.get('window');
+
 
 const PantallaInicial = () => {
     return (
@@ -16,11 +17,61 @@ const PantallaInicial = () => {
 
 
 const Login = () => {
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const mostrarModal = () => {
+    setModalVisible(true);
+  };
+
+  const cerrarModal = () => {
+    setModalVisible(false);
+  }
 
   return (
     <View style={stylesLogin.containerLogin}>
 
+    <Modal
+      animationType='fade'
+      transparent={true}
+      visible={modalVisible}
+      onRequestClose={cerrarModal}
+    >
+
+      <View style={modalStyles.modalContainer}>
+
+      <View style={modalStyles.modalView}>
+        <Text style={modalStyles.modalTitle}>Recuperar Contraseña</Text>
         
+        <Text style={modalStyles.modalText}> Ingresa el correo electrónico asociado a tu cuenta </Text>
+
+        <TextInput
+        
+          style={[stylesLogin.input, {marginBottom: 20, marginTop: 10, zIndex: 99}]}
+          placeholder="Tu correo electrónico"
+          placeholderTextColor="#191A2C"
+          keyboardType='email-address'
+          autoCapitalize='none'
+        />
+
+        <View style={{minHeight: 20, marginBottom: 15}} />
+
+        <View style={modalStyles.buttonContainer}>
+
+          <TouchableOpacity style={[modalStyles.button, modalStyles.buttonClose]} onPress={cerrarModal}>
+            <Text style={modalStyles.textStyle}>Cancelar</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[modalStyles.button, modalStyles.buttonSend]}>
+            <Text style={modalStyles.textStyle}>Enviar</Text>
+          </TouchableOpacity>
+
+        </View>
+      </View>
+
+      </View>
+
+    </Modal>
+    
 
       <View style={stylesLogin.disenoSuperior}>
         <Svg
@@ -54,7 +105,7 @@ const Login = () => {
 
       <View style={stylesLogin.linksContainer}>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={mostrarModal}>
           <Text style={stylesLogin.linkText}>¿Has olvidado tu contraseña?</Text>
         </TouchableOpacity>
 
@@ -213,4 +264,74 @@ const stylesLogin = StyleSheet.create({
   },
 
 
+});
+
+const modalStyles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: '#1B2D45',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '85%',
+  },
+
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 15,
+  },
+
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
+    color: '#E5E7EB',
+    fontSize: 14,
+  },
+
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 10,
+  },
+
+  button: {
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+    flex: 1,
+    marginHorizontal: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  buttonClose: {
+    backgroundColor: '#6B7280',
+  },
+
+  buttonSend: {
+    backgroundColor: '#191A2C',
+  },
+
+  textStyle: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 });
