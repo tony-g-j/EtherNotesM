@@ -14,7 +14,7 @@ const { width, height } = Dimensions.get("window");
 
 export default function Cuenta() {
 
-  // 🔥 EL HOOK DEBE IR AQUÍ
+
   const navigation = useNavigation();
 
   return (
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   textN: {
     fontWeight: "normal",
-    fontSize: 16
+    fontSize: 17
   },
   btn1: {
     backgroundColor: '#191A2C',

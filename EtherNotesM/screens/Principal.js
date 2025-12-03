@@ -11,10 +11,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-// 1. ACEPTAR LA PROP 'navigation'
-// Asumo que este componente está siendo renderizado por un Stack.Screenr
+
 export default function Principal({ navigation }) {
-  // --- Estados para UI y Data ---
+
   const [modalVisible, setModalVisible] = useState(false);
   const [modalCarpetaVisible, setModalCarpetaVisible] = useState(false);
 
@@ -28,10 +27,9 @@ export default function Principal({ navigation }) {
   // Estados para la navegación y filtros
   const [notas, setNotas] = useState([]);
   const [editando, setEditando] = useState(null); // Índice de la nota a editar
-  // Mantengo 'seccion' pero la uso para las vistas de Notas/Carpetas/Búsqueda.
-  // Las secciones de 'Cuenta' y 'Configuracion' ahora usarán 'navigation'.
-  const [seccion, setSeccion] = useState("notas"); // 'notas', 'folders', 'folder'
-  const [carpetaVista, setCarpetaVista] = useState(null); // Carpeta seleccionada para ver
+
+  const [seccion, setSeccion] = useState("notas"); 
+  const [carpetaVista, setCarpetaVista] = useState(null); 
   const [searchText, setSearchText] = useState("");
 
   // Estado de las carpetas
@@ -40,8 +38,6 @@ export default function Principal({ navigation }) {
     "Escuela",
   ]);
   const [nuevaCarpetaNombre, setNuevaCarpetaNombre] = useState("");
-
-  // --- Funciones de Lógica (sin cambios) ---
 
   const abrirModalNuevaNota = () => {
     // Limpiar estados para nueva nota
@@ -91,7 +87,7 @@ export default function Principal({ navigation }) {
   };
 
   const eliminarNota = (i) => {
-    // Usamos el índice para eliminar
+
     setNotas(notas.filter((_, idx) => idx !== i));
   };
 
@@ -104,9 +100,7 @@ export default function Principal({ navigation }) {
     setModalCarpetaVisible(false);
   };
 
-  // --- Memoización para Filtros (sin cambios) ---
 
-  // Filtro principal de notas (sección 'notas')
   const notasFiltradasGeneral = useMemo(() => {
     if (seccion !== "notas" && seccion !== "folder") {
       return notas;
@@ -132,7 +126,7 @@ export default function Principal({ navigation }) {
     return filteredNotes;
   }, [notas, seccion, searchText, carpetaVista]);
 
-  // Filtro de carpetas (sección 'folders')
+  // Filtro de carpetas 
   const carpetasFiltradas = useMemo(() => {
     if (seccion !== "folders" || searchText.trim() === "") {
       return carpetasDisponibles;
@@ -144,7 +138,6 @@ export default function Principal({ navigation }) {
     );
   }, [carpetasDisponibles, seccion, searchText]);
 
-  // --- Renderizado de Contenido Principal (Simplificado) ---
 
   const renderContenido = () => {
     // 1. Vista de Carpeta Individual
@@ -171,7 +164,7 @@ export default function Principal({ navigation }) {
           )}
 
           {notasDeEstaCarpeta.map((n, index) => {
-            // Necesitamos el índice original para editar/eliminar
+
             const originalIndex = notas.findIndex(
               (nota) =>
                 nota.titulo === n.titulo &&
@@ -233,7 +226,7 @@ export default function Principal({ navigation }) {
               onPress={() => {
                 setCarpetaVista(c);
                 setSeccion("folder");
-                setSearchText(""); // Limpiar búsqueda al cambiar de vista
+                setSearchText("");
               }}
             >
               <Ionicons name="folder" size={30} color="#ffeb3b" />
@@ -247,9 +240,8 @@ export default function Principal({ navigation }) {
       );
     }
 
-    // **3. Vistas Genéricas (Configuración o Cuenta)**
 
-    // 4. Vista de Todas las Notas (seccion 'notas' - Default)
+    // 4. Vista de Todas las Notas seccion 'notas'
     return (
       <>
         <Text style={styles.title}>
@@ -272,7 +264,6 @@ export default function Principal({ navigation }) {
         )}
 
         {notasFiltradasGeneral.map((n, index) => {
-          // Necesitamos el índice original para editar/eliminar
           const originalIndex = notas.findIndex(
             (nota) =>
               nota.titulo === n.titulo &&
@@ -313,7 +304,7 @@ export default function Principal({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Barra Superior (Búsqueda y Añadir) */}
+
       <View style={styles.topBar}>
         <Ionicons name="search" size={30} color="#bfbfd9" />
 
@@ -343,9 +334,8 @@ export default function Principal({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Contenido Principal (Sidebar + ScrollView) */}
       <View style={styles.layout}>
-        {/* Sidebar / Navegación */}
+
         <View style={styles.sidebar}>
           <TouchableOpacity
             style={[styles.navItem, seccion === "notas" && styles.navItemSelected]}
@@ -378,7 +368,7 @@ export default function Principal({ navigation }) {
           <TouchableOpacity
             style={[
               styles.navItem,
-              // No usamos 'seccion === 'Cuenta'' porque navegaremos fuera
+
             ]}
             onPress={() => {
               // Navegar a la pantalla 'CuentaScreen'
@@ -394,10 +384,10 @@ export default function Principal({ navigation }) {
             style={[
               styles.navItem,
               { marginTop: "auto" },
-              // No usamos 'seccion === 'Configuracion'' porque navegaremos fuera
+
             ]}
             onPress={() => {
-              // Navegar a la pantalla 'ConfiguracionScreen'
+
               navigation.navigate('Configuracion');
             }}
           >
@@ -406,7 +396,7 @@ export default function Principal({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Área de Contenido Dinámico */}
+
         <ScrollView style={styles.mainContent}>
           {renderContenido()}
         </ScrollView>
@@ -509,7 +499,7 @@ export default function Principal({ navigation }) {
         </View>
       </Modal>
 
-      {/* Modal de Nueva Carpeta (sin cambios) */}
+
       <Modal
         animationType="slide"
         transparent
@@ -550,9 +540,8 @@ export default function Principal({ navigation }) {
   );
 }
 
-// Los estilos se mantienen exactamente igual.
+
 const styles = StyleSheet.create({
-  // Se mantiene el fondo oscuro para consistencia con el tema que elegiste
   container: { flex: 1, backgroundColor: "#0f172a" },
   topBar: {
     flexDirection: "row",
@@ -599,7 +588,7 @@ const styles = StyleSheet.create({
   },
   navItemSelected: {
     backgroundColor: "#222556",
-    borderLeftColor: "#ffeb3b", // Color de resalte para la navegación
+    borderLeftColor: "#ffeb3b", 
     borderLeftWidth: 4,
   },
   navText: {
@@ -617,7 +606,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "white",
     marginBottom: 20,
-    // Se añaden bordes para mejor separación visual
     borderBottomWidth: 1,
     borderBottomColor: "#222556",
     paddingBottom: 10,
@@ -651,7 +639,7 @@ const styles = StyleSheet.create({
   folderBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#22375a", // Mismo fondo que noteBox
+    backgroundColor: "#22375a", 
     padding: 15,
     borderRadius: 10,
     marginBottom: 20,
@@ -736,7 +724,7 @@ const styles = StyleSheet.create({
   },
   btn: { padding: 10, borderRadius: 8, width: "48%" },
   btnText: {
-    fontSize: 18,
+    fontSize: 19,
     color: "white",
     textAlign: "center",
     fontWeight: "bold",

@@ -128,7 +128,7 @@ const Login = () => {
       <View style={stylesLogin.disenoInferior}>
         <Svg
           width={412}
-          height={199}
+          height={198}
           fill="none"
         >
           <Path
@@ -146,7 +146,7 @@ const Login = () => {
 };
 
 
-export default function InicioSesion() {   // <-- NAVEGATION YA NO ES NECESARIO AQUÍ
+export default function InicioSesion() {   
     const [inicioApp, setInicioApp] = useState(true);
 
     useEffect(() => {
