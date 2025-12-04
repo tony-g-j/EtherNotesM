@@ -1,556 +1,566 @@
-import React, { useState, useMemo } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { useState, useEffect } from "react"
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Modal } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { Ionicons } from "@expo/vector-icons"
+import { VaultController } from "../controllers/VaultController"
+import { NoteController } from "../controllers/NoteController"
 
-export default function Principal() {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalCarpetaVisible, setModalCarpetaVisible] = useState(false);
+const vaultController = new VaultController()
+const noteController = new NoteController()
 
-  const [titulo, setTitulo] = useState("");
-  const [subtitulo, setSubtitulo] = useState("");
-  const [contenido, setContenido] = useState("");
-  const [fecha, setFecha] = useState("");
+export default function Principal({ navigation, currentUserID }) {
+  const [vaults, setVaults] = useState([])
+  const [selectedVault, setSelectedVault] = useState(null)
+  const [vaultDropdownOpen, setVaultDropdownOpen] = useState(false)
+  const [notes, setNotes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [searchText, setSearchText] = useState("")
 
-  const [carpetaSeleccionada, setCarpetaSeleccionada] = useState("Personal");
-  const [carpetaVista, setCarpetaVista] = useState(null);
+  const [noteModalVisible, setNoteModalVisible] = useState(false)
+  const [vaultModalVisible, setVaultModalVisible] = useState(false)
+  const [noteTitle, setNoteTitle] = useState("")
+  const [noteContent, setNoteContent] = useState("")
+  const [editingNoteId, setEditingNoteId] = useState(null)
+  const [vaultName, setVaultName] = useState("")
+  const [vaultDescription, setVaultDescription] = useState("")
 
-  const [notas, setNotas] = useState([]);
-  const [editando, setEditando] = useState(null);
-
-  const [seccion, setSeccion] = useState("notas");
-
-  const [carpetasDisponibles, setCarpetasDisponibles] = useState([
-    "Personal",
-    "Escuela",
-  ]);
-
-  const [nuevaCarpetaNombre, setNuevaCarpetaNombre] = useState("");
-
-  const [searchText, setSearchText] = useState("");
-
-  const abrirModalNuevaNota = () => {
-    setTitulo("");
-    setSubtitulo("");
-    setContenido("");
-    setFecha("");
-    setCarpetaSeleccionada("Personal");
-    setEditando(null);
-    setModalVisible(true);
-  };
-
-  const guardarNota = () => {
-    if (editando !== null) {
-      const nuevas = [...notas];
-      nuevas[editando] = {
-        titulo,
-        subtitulo,
-        fecha,
-        contenido,
-        carpeta: carpetaSeleccionada,
-      };
-      setNotas(nuevas);
-      setEditando(null);
-    } else {
-      setNotas([
-        ...notas,
-        {
-          titulo,
-          subtitulo,
-          fecha,
-          contenido,
-          carpeta: carpetaSeleccionada,
-        },
-      ]);
-    }
-
-    setModalVisible(false);
-  };
-
-  const editarNota = (i) => {
-    const n = notas[i];
-    setTitulo(n.titulo);
-    setSubtitulo(n.subtitulo);
-    setFecha(n.fecha);
-    setContenido(n.contenido);
-    setCarpetaSeleccionada(n.carpeta);
-    setEditando(i);
-    setModalVisible(true);
-  };
-
-  const eliminarNota = (i) => {
-    setNotas(notas.filter((_, idx) => idx !== i));
-  };
-
-  const agregarCarpeta = () => {
-    if (nuevaCarpetaNombre.trim() === "") return;
-    if (carpetasDisponibles.includes(nuevaCarpetaNombre.trim())) return;
-
-    setCarpetasDisponibles([...carpetasDisponibles, nuevaCarpetaNombre.trim()]);
-    setNuevaCarpetaNombre("");
-    setModalCarpetaVisible(false);
-  };
-
-  const notasFiltradasGeneral = useMemo(() => {
-    if (seccion !== "notas" || searchText.trim() === "") {
-      return notas;
-    }
-    const lowerSearchText = searchText.toLowerCase();
-
-    return notas.filter((n) => n.titulo.toLowerCase().includes(lowerSearchText));
-  }, [notas, seccion, searchText]);
-
-  const carpetasFiltradas = useMemo(() => {
-    if (seccion !== "folders" || searchText.trim() === "") {
-      return carpetasDisponibles;
-    }
-    const lowerSearchText = searchText.toLowerCase();
-
-    return carpetasDisponibles.filter((c) =>
-      c.toLowerCase().includes(lowerSearchText)
-    );
-  }, [carpetasDisponibles, seccion, searchText]);
-
-
-  const renderContenido = () => {
-    if (seccion === "folder" && carpetaVista !== null) {
-
-      let filtradasPorCarpeta = notas.filter((n) => n.carpeta === carpetaVista);
-
-      let filtradasFinal = filtradasPorCarpeta;
-      if (searchText.trim() !== "") {
-        const lowerSearchText = searchText.toLowerCase();
-        filtradasFinal = filtradasPorCarpeta.filter((n) =>
-          n.titulo.toLowerCase().includes(lowerSearchText)
-        );
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const userVaults = await vaultController.getVaultsByUser(currentUserID)
+        setVaults(userVaults)
+        if (userVaults.length > 0) {
+          setSelectedVault(userVaults[0])
+          const vaultNotes = await noteController.getNotesByVault(userVaults[0].id)
+          setNotes(vaultNotes)
+        }
+      } catch (error) {
+        console.error("Error loading data:", error)
+      } finally {
+        setLoading(false)
       }
-      
-      return (
-        <>
-          <Text style={styles.title}>Carpeta: {carpetaVista}</Text>
-
-          {filtradasFinal.length === 0 && (
-            <Text style={{ color: "white", fontSize: 20 }}>
-              {searchText.trim() !== ""
-                ? `No se encontraron notas con el título "${searchText}" en esta carpeta.`
-                : "Sin notas aquí."}
-            </Text>
-          )}
-
-          {filtradasFinal.map((n, index) => {
-
-             const originalIndex = notas.findIndex(
-              (nota) => nota.titulo === n.titulo && nota.contenido === n.contenido && nota.carpeta === n.carpeta
-            );
-
-            return (
-              <View key={originalIndex} style={styles.noteBox}>
-                <Text style={styles.noteTitle}>{n.titulo}</Text>
-                <Text style={styles.noteSubtitle}>{n.subtitulo}</Text>
-                <Text style={styles.noteDate}>{n.fecha}</Text>
-                <Text style={styles.noteContent}>{n.contenido}</Text>
-
-                <View style={styles.actionsRow}>
-                  {/* Edición/Eliminación usando el índice original encontrado */}
-                  <TouchableOpacity onPress={() => editarNota(originalIndex)}>
-                    <Ionicons name="create-outline" size={30} color="yellow" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => eliminarNota(originalIndex)}>
-                    <Ionicons name="trash-outline" size={30} color="red" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </>
-      );
     }
 
-    if (seccion === "folders") {
-      return (
-        <>
-          <Text style={styles.title}>Carpetas</Text>
+    loadData()
+  }, [currentUserID])
 
-          {carpetasFiltradas.length === 0 && (
-            <Text style={{ color: "white", fontSize: 20 }}>
-              {searchText.trim() !== ""
-                ? `No se encontraron carpetas con el título "${searchText}".`
-                : "Aún no tienes carpetas."}
-            </Text>
-          )}
-
-          {carpetasFiltradas.map((c) => (
-            <TouchableOpacity
-              key={c}
-              style={styles.noteBox}
-              onPress={() => {
-                setCarpetaVista(c);
-                setSeccion("folder");
-                setSearchText(""); 
-              }}
-            >
-              <Text style={styles.noteTitle}>{c}</Text>
-            </TouchableOpacity>
-          ))}
-        </>
-      );
+  useEffect(() => {
+    const loadNotesForVault = async () => {
+      if (selectedVault) {
+        try {
+          const vaultNotes = await noteController.getNotesByVault(selectedVault.id)
+          setNotes(vaultNotes)
+        } catch (error) {
+          console.error("Error loading notes:", error)
+        }
+      }
     }
 
-    return (
-      <>
-        <Text style={styles.title}>Tus notas</Text>
+    loadNotesForVault()
+  }, [selectedVault])
 
-        {notasFiltradasGeneral.length === 0 && (
-          <Text style={{ color: "white", fontSize: 20 }}>
-            {searchText.trim() !== ""
-              ? "No se encontraron notas con ese título."
-              : "Aún no tienes notas."}
-          </Text>
-        )}
+  const handleCreateNote = async () => {
+    if (!noteTitle.trim() || !selectedVault) {
+      console.log("[v0] Validation failed - Title: ", noteTitle, "Vault: ", selectedVault)
+      return
+    }
 
-        {notasFiltradasGeneral.map((n) => {
+    try {
+      console.log("[v0] Creating note with title:", noteTitle)
+      await noteController.createNote(noteTitle, noteContent, selectedVault.id)
+      const updatedNotes = await noteController.getNotesByVault(selectedVault.id)
+      setNotes(updatedNotes)
+      setNoteTitle("")
+      setNoteContent("")
+      setNoteModalVisible(false)
+    } catch (error) {
+      console.error("Error creating note:", error)
+    }
+  }
 
-          const originalIndex = notas.findIndex(
-            (nota) => nota.titulo === n.titulo && nota.contenido === n.contenido
-          );
+  const handleUpdateNote = async () => {
+    if (!noteTitle.trim() || !editingNoteId) return
 
-          return (
-            <View key={originalIndex} style={styles.noteBox}>
-              <Text style={styles.noteTitle}>{n.titulo}</Text>
-              <Text style={styles.noteSubtitle}>{n.subtitulo}</Text>
-              <Text style={styles.noteDate}>{n.fecha}</Text>
+    try {
+      await noteController.updateNote(editingNoteId, { title: noteTitle, content: noteContent })
+      const updatedNotes = await noteController.getNotesByVault(selectedVault.id)
+      setNotes(updatedNotes)
+      setNoteTitle("")
+      setNoteContent("")
+      setEditingNoteId(null)
+      setNoteModalVisible(false)
+    } catch (error) {
+      console.error("Error updating note:", error)
+    }
+  }
 
-              <Text style={styles.folderTag}>Carpeta: {n.carpeta}</Text>
+  const handleDeleteNote = async (noteId) => {
+    try {
+      await noteController.deleteNote(noteId)
+      const updatedNotes = await noteController.getNotesByVault(selectedVault.id)
+      setNotes(updatedNotes)
+    } catch (error) {
+      console.error("Error deleting note:", error)
+    }
+  }
 
-              <Text style={styles.noteContent}>{n.contenido}</Text>
+  const openEditNoteModal = (note) => {
+    setNoteTitle(note.title)
+    setNoteContent(note.content)
+    setEditingNoteId(note.id)
+    setNoteModalVisible(true)
+  }
 
-              <View style={styles.actionsRow}>
-                <TouchableOpacity onPress={() => editarNota(originalIndex)}>
-                  <Ionicons name="create-outline" size={30} color="yellow" />
-                </TouchableOpacity>
+  const handleViewNote = (note) => {
+    navigation.navigate("NoteDetail", { noteId: note.id })
+  }
 
-                <TouchableOpacity onPress={() => eliminarNota(originalIndex)}>
-                  <Ionicons name="trash-outline" size={30} color="red" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        })}
-      </>
-    );
-  };
+  const handleCreateVault = async () => {
+    if (!vaultName.trim()) return
 
+    try {
+      await vaultController.createVault(vaultName, "personal", currentUserID, vaultDescription)
+      const updatedVaults = await vaultController.getVaultsByUser(currentUserID)
+      setVaults(updatedVaults)
+      setVaultName("")
+      setVaultDescription("")
+      setVaultModalVisible(false)
+    } catch (error) {
+      console.error("Error creating vault:", error)
+    }
+  }
+
+  const handleDeleteVault = async (vaultId) => {
+    try {
+      await vaultController.deleteVault(vaultId)
+      const updatedVaults = await vaultController.getVaultsByUser(currentUserID)
+      setVaults(updatedVaults)
+      if (selectedVault?.id === vaultId) {
+        setSelectedVault(updatedVaults[0] || null)
+      }
+    } catch (error) {
+      console.error("Error deleting vault:", error)
+    }
+  }
+
+  const filteredNotes = notes.filter((note) => note.title.toLowerCase().includes(searchText.toLowerCase()))
+
+  const openCreateNoteModal = () => {
+    setNoteTitle("")
+    setNoteContent("")
+    setEditingNoteId(null)
+    setNoteModalVisible(true)
+  }
+
+  const isNoteFormValid = noteTitle.trim().length > 0 && selectedVault !== null
 
   return (
     <SafeAreaView style={styles.container}>
-
       <View style={styles.topBar}>
-        <Ionicons name="search" size={54} color="white" />
-
-        <TextInput
-          placeholder={
-            seccion === "folders"
-              ? "Buscar carpetas..."
-              : "Buscar por Título..."
-          }
-          placeholderTextColor="#7a7ca1ff"
-          style={styles.searchInput}
-          value={searchText}
-          onChangeText={setSearchText}
-
-          editable={
-            seccion === "notas" || seccion === "folder" || seccion === "folders"
-          }
-        />
-
-        <TouchableOpacity
-          onPress={() => {
-            if (seccion === "folders") setModalCarpetaVisible(true);
-            else abrirModalNuevaNota();
-          }}
-        >
-          <Ionicons name="add-circle-outline" size={54} color="white" />
+        <Ionicons name="search" size={20} color="#6B7A9E" />
+        <Text style={styles.appTitle}>ETERNOTES</Text>
+        <TouchableOpacity onPress={openCreateNoteModal}>
+          <Ionicons name="add" size={24} color="white" />
         </TouchableOpacity>
       </View>
 
-
       <View style={styles.layout}>
         <View style={styles.sidebar}>
-          <TouchableOpacity 
-            onPress={() => {
-              setSeccion("notas");
-              setSearchText(""); 
-            }}
-          >
-            <Ionicons name="document-text-outline" size={54} color="white" />
+          <TouchableOpacity onPress={() => navigation.navigate("Principal")}>
+            <Ionicons name="search-outline" size={24} color="white" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            onPress={() => {
-              setSeccion("folders");
-              setSearchText(""); 
-            }}
-          >
-            <Ionicons name="folder-outline" size={54} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setSeccion("perfil")}>
-            <Ionicons name="person-circle-outline" size={54} color="white" />
+          <TouchableOpacity onPress={() => setVaultModalVisible(true)}>
+            <Ionicons name="folder-outline" size={24} color="white" />
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setSeccion("config")}
-            style={{ marginTop: "auto", marginBottom: 20 }}
+            onPress={() => {
+              if (filteredNotes.length > 0) {
+                handleViewNote(filteredNotes[0])
+              }
+            }}
           >
-            <Ionicons name="settings-outline" size={54} color="white" />
+            <Ionicons name="book-outline" size={24} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate("Profile", { currentUserID })}>
+            <Ionicons name="person-circle-outline" size={24} color="white" />
+          </TouchableOpacity>
+
+          <View style={{ flex: 1 }} />
+
+          <TouchableOpacity onPress={() => navigation.navigate("Principal")}>
+            <Ionicons name="stats-chart-outline" size={24} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate("Configuracion", { currentUserID })}>
+            <Ionicons name="settings-outline" size={24} color="white" />
           </TouchableOpacity>
         </View>
 
-
         <ScrollView style={styles.mainContent}>
-          {renderContenido()}
+          <View style={styles.vaultContainer}>
+            <Text style={styles.vaultLabel}>Vaults</Text>
+            <TouchableOpacity style={styles.vaultDropdown} onPress={() => setVaultDropdownOpen(!vaultDropdownOpen)}>
+              <Text style={styles.vaultDropdownText}>{selectedVault?.name || "Select Vault"}</Text>
+              <Ionicons name={vaultDropdownOpen ? "chevron-up" : "chevron-down"} size={20} color="white" />
+            </TouchableOpacity>
+
+            {vaultDropdownOpen && (
+              <View style={styles.dropdownMenu}>
+                {vaults.map((vault) => (
+                  <View key={vault.id} style={styles.dropdownItemContainer}>
+                    <TouchableOpacity
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setSelectedVault(vault)
+                        setVaultDropdownOpen(false)
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>{vault.name}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteVault(vault.id)} style={styles.deleteVaultBtn}>
+                      <Ionicons name="trash-outline" size={16} color="red" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search notes..."
+            placeholderTextColor="#6B7A9E"
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+
+          {loading ? (
+            <ActivityIndicator size="large" color="white" style={{ marginTop: 20 }} />
+          ) : (
+            <View style={styles.notesList}>
+              {filteredNotes.length === 0 ? (
+                <Text style={{ color: "white", fontSize: 16, textAlign: "center", marginTop: 20 }}>
+                  No notes yet. Create one to get started!
+                </Text>
+              ) : (
+                filteredNotes.map((note) => (
+                  <View key={note.id} style={styles.noteItem}>
+                    <TouchableOpacity style={styles.noteContent} onPress={() => handleViewNote(note)}>
+                      <Text style={styles.noteTitle}>{note.title}</Text>
+                      <Text style={styles.notePreview} numberOfLines={2}>
+                        {note.content}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteNote(note.id)} style={styles.deleteBtn}>
+                      <Ionicons name="trash-outline" size={20} color="red" />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
         </ScrollView>
       </View>
 
-
-      <Modal animationType="slide" transparent visible={modalVisible}>
+      <Modal
+        visible={noteModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setNoteModalVisible(false)
+          setNoteTitle("")
+          setNoteContent("")
+          setEditingNoteId(null)
+        }}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editando !== null ? "Editar nota" : "Nueva nota"}
-            </Text>
+            <Text style={styles.modalTitle}>{editingNoteId ? "Edit Note" : "New Note"}</Text>
 
             <TextInput
               style={styles.input}
-              placeholder="Título"
-              placeholderTextColor="#bfbfd9"
-              value={titulo}
-              onChangeText={setTitulo}
+              placeholder="Title (required)"
+              placeholderTextColor="#6B7A9E"
+              value={noteTitle}
+              onChangeText={setNoteTitle}
             />
 
             <TextInput
-              style={styles.input}
-              placeholder="Subtítulo"
-              placeholderTextColor="#bfbfd9"
-              value={subtitulo}
-              onChangeText={setSubtitulo}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Fecha (dd/mm/aaaa)"
-              placeholderTextColor="#bfbfd9"
-              value={fecha}
-              onChangeText={setFecha}
-            />
-
-            <TextInput
-              style={[styles.input, { height: 100 }]} 
-              placeholder="Contenido de la nota"
-              placeholderTextColor="#bfbfd9"
+              style={[styles.input, { height: 120 }]}
+              placeholder="Content"
+              placeholderTextColor="#6B7A9E"
+              value={noteContent}
+              onChangeText={setNoteContent}
               multiline
-              value={contenido}
-              onChangeText={setContenido}
             />
-
-            <Text style={styles.folderLabel}>Carpeta:</Text>
-
-            <ScrollView style={{ maxHeight: 150, marginBottom: 10 }}>
-              {carpetasDisponibles.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  style={[
-                    styles.folderOption,
-                    carpetaSeleccionada === c && styles.folderOptionSelected,
-                  ]}
-                  onPress={() => setCarpetaSeleccionada(c)}
-                >
-                  <Text style={styles.folderOptionText}>{c}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
 
             <View style={styles.btnRow}>
               <TouchableOpacity
-                style={[styles.btn, { backgroundColor: "#d9534f" }]}
+                style={[
+                  styles.btn,
+                  {
+                    backgroundColor: isNoteFormValid ? "#4CAF50" : "#888888",
+                  },
+                ]}
+                onPress={editingNoteId ? handleUpdateNote : handleCreateNote}
+                disabled={!isNoteFormValid}
+              >
+                <Text style={styles.btnText}>{editingNoteId ? "Update" : "Create"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: "#f44336" }]}
                 onPress={() => {
-                  setModalVisible(false);
-                  setEditando(null);
+                  setNoteModalVisible(false)
+                  setNoteTitle("")
+                  setNoteContent("")
+                  setEditingNoteId(null)
                 }}
               >
-                <Text style={styles.btnText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: "#5cb85c" }]}
-                onPress={guardarNota}
-              >
-                <Text style={styles.btnText}>
-                  {editando !== null ? "Guardar cambios" : "Guardar"}
-                </Text>
+                <Text style={styles.btnText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-
-      <Modal animationType="slide" transparent visible={modalCarpetaVisible}>
+      <Modal
+        visible={vaultModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setVaultModalVisible(false)
+          setVaultName("")
+          setVaultDescription("")
+        }}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Nueva carpeta</Text>
+            <Text style={styles.modalTitle}>New Vault</Text>
 
             <TextInput
               style={styles.input}
-              placeholder="Nombre de la carpeta"
-              placeholderTextColor="#bfbfd9"
-              value={nuevaCarpetaNombre}
-              onChangeText={setNuevaCarpetaNombre}
+              placeholder="Vault Name"
+              placeholderTextColor="#6B7A9E"
+              value={vaultName}
+              onChangeText={setVaultName}
+            />
+
+            <TextInput
+              style={[styles.input, { height: 80 }]}
+              placeholder="Description (optional)"
+              placeholderTextColor="#6B7A9E"
+              value={vaultDescription}
+              onChangeText={setVaultDescription}
+              multiline
             />
 
             <View style={styles.btnRow}>
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: "#d9534f" }]}
-                onPress={() => setModalCarpetaVisible(false)}
-              >
-                <Text style={styles.btnText}>Cancelar</Text>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: "#4CAF50" }]} onPress={handleCreateVault}>
+                <Text style={styles.btnText}>Create</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[styles.btn, { backgroundColor: "#5cb85c" }]}
-                onPress={agregarCarpeta}
+                style={[styles.btn, { backgroundColor: "#f44336" }]}
+                onPress={() => {
+                  setVaultModalVisible(false)
+                  setVaultName("")
+                  setVaultDescription("")
+                }}
               >
-                <Text style={styles.btnText}>Crear</Text>
+                <Text style={styles.btnText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
     </SafeAreaView>
-  );
+  )
 }
 
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f4f4f4ff" },
+  container: {
+    flex: 1,
+    backgroundColor: "#1a1f3a",
+  },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 10,
-    backgroundColor: "#191a2C",
-    gap: 15,
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: "#0f1419",
+    borderBottomWidth: 1,
+    borderBottomColor: "#2a2f4a",
   },
-  searchInput: {
-    color: "white",
+  appTitle: {
+    color: "#8b5cf6",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  layout: {
     flex: 1,
-    backgroundColor: "#222556",
-    padding: 19,
-    borderRadius: 8,
-    fontSize: 28,
+    flexDirection: "row",
   },
-  layout: { flex: 1, flexDirection: "row" },
   sidebar: {
-    width: 80,
-    backgroundColor: "#191a2C",
+    width: 60,
+    backgroundColor: "#0f1419",
+    justifyContent: "flex-start",
     alignItems: "center",
     paddingVertical: 20,
-    gap: 60,
-    borderRightWidth: 2,
-    borderRightColor: "#222556",
+    gap: 20,
+    borderRightWidth: 1,
+    borderRightColor: "#2a2f4a",
   },
   mainContent: {
     flex: 1,
-    padding: 25,
-    backgroundColor: "#1b2d45",
+    paddingHorizontal: 15,
+    paddingVertical: 15,
   },
-  title: {
-    fontSize: 32,
+  vaultContainer: {
+    marginBottom: 15,
+  },
+  vaultLabel: {
+    color: "#8b5cf6",
+    fontSize: 12,
     fontWeight: "bold",
-    color: "white",
-    marginBottom: 20,
+    marginBottom: 8,
   },
-  noteBox: {
-    backgroundColor: "#22375a",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  noteTitle: { fontSize: 26, fontWeight: "bold", color: "white" },
-  noteSubtitle: { fontSize: 20, color: "#d1d1d1" },
-  noteDate: { fontSize: 16, color: "#b7b7b7", marginBottom: 10 },
-  noteContent: { fontSize: 18, color: "white", marginBottom: 10 },
-  folderTag: {
-    fontSize: 16,
-    color: "#9cd1ff",
-    marginBottom: 6,
-  },
-  actionsRow: {
+  vaultDropdown: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 20,
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#2a2f4a",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#3a3f5a",
+  },
+  vaultDropdownText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  dropdownMenu: {
+    backgroundColor: "#2a2f4a",
+    borderRadius: 6,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#3a3f5a",
+    maxHeight: 200,
+  },
+  dropdownItemContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#3a3f5a",
+  },
+  dropdownItem: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownItemText: {
+    color: "white",
+    fontSize: 13,
+  },
+  deleteVaultBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    backgroundColor: "#2a2f4a",
+    color: "white",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#3a3f5a",
+    fontSize: 13,
+  },
+  notesList: {
+    gap: 10,
+  },
+  noteItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#2a2f4a",
+    padding: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#3a3f5a",
+  },
+  noteContent: {
+    flex: 1,
+  },
+  noteTitle: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  notePreview: {
+    color: "#8b9bb4",
+    fontSize: 12,
+  },
+  deleteBtn: {
+    paddingHorizontal: 10,
   },
   modalContainer: {
     flex: 1,
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#191a2C",
-    margin: 20,
+    backgroundColor: "#1a1f3a",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 20,
-    borderRadius: 10,
+    maxHeight: "80%",
   },
   modalTitle: {
-    fontSize: 28,
+    color: "white",
+    fontSize: 18,
     fontWeight: "bold",
     marginBottom: 15,
-    color: "white",
   },
   input: {
-    fontSize: 18,
-    backgroundColor: "#222556",
-    padding: 10,
-    marginVertical: 8,
-    borderRadius: 8,
+    backgroundColor: "#2a2f4a",
     color: "white",
-  },
-  folderLabel: {
-    marginTop: 10,
-    fontSize: 20,
-    color: "white",
-    marginBottom: 6,
-  },
-  folderOption: {
-    padding: 10,
-    backgroundColor: "#222556",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 6,
-    marginVertical: 4,
-  },
-  folderOptionSelected: {
-    backgroundColor: "#4459a8",
-  },
-  folderOptionText: {
-    color: "white",
-    fontSize: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#3a3f5a",
+    fontSize: 13,
   },
   btnRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
+    gap: 10,
+    marginTop: 15,
   },
-  btn: { padding: 10, borderRadius: 8, width: "48%" },
+  btn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 6,
+    alignItems: "center",
+  },
   btnText: {
-    fontSize: 18,
     color: "white",
-    textAlign: "center",
-    fontWeight: "bold",
+    fontSize: 14,
+    fontWeight: "600",
   },
-});
+  title: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+})

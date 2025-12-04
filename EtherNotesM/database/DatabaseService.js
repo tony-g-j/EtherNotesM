@@ -1,38 +1,36 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from "expo-sqlite"
 
 export class Database {
-  static instance = null;
-  initialized = false;
-  db = null;
+  static instance = null
+  initialized = false
+  db = null
 
   constructor() {}
 
   static getInstance() {
     if (!Database.instance) {
-      Database.instance = new Database();
+      Database.instance = new Database()
     }
-    return Database.instance;
+    return Database.instance
   }
 
   async initialize() {
-    if (this.initialized) return;
+    if (this.initialized) return
 
     try {
-      // Opens database
-      this.db = await SQLite.openDatabaseAsync('securenotes.db');
-      
-      // Create tables
+      this.db = await SQLite.openDatabaseAsync("ethernotesm.db")
+
       await this.db.execAsync(`
         PRAGMA journal_mode = WAL;
+        PRAGMA foreign_keys = ON; 
         
         CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY,
           email TEXT UNIQUE NOT NULL,
           name TEXT,
-          masterPasswordHash TEXT NOT NULL,
-          salt TEXT NOT NULL,
+          password TEXT NOT NULL,
           createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-          lastLogin DATETIME
+          isActive INTEGER DEFAULT 1
         );
         
         CREATE TABLE IF NOT EXISTS vaults (
@@ -40,7 +38,8 @@ export class Database {
           userId TEXT NOT NULL,
           name TEXT NOT NULL,
           description TEXT,
-          isLocked BOOLEAN DEFAULT 0,
+          icon TEXT DEFAULT 'folder', 
+          color TEXT DEFAULT '#ffffff',
           createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -50,326 +49,250 @@ export class Database {
           vaultId TEXT NOT NULL,
           title TEXT NOT NULL,
           content TEXT,
-          isEncrypted BOOLEAN DEFAULT 1,
-          encryptionKey TEXT,
-          tags TEXT, -- JSON array of tags
           createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
           updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (vaultId) REFERENCES vaults(id) ON DELETE CASCADE
         );
-        
-        CREATE INDEX IF NOT EXISTS idx_vaults_userId ON vaults(userId);
-        CREATE INDEX IF NOT EXISTS idx_notes_vaultId ON notes(vaultId);
-        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-      `);
+      `)
 
-      this.initialized = true;
+      this.initialized = true
+      console.log("Database initialized successfully")
     } catch (error) {
-      console.error('Database initialization error:', error);
-      throw error;
+      console.error("Database initialization failed:", error)
+      throw error
     }
   }
 
   // User methods
   async saveUser(user) {
-    await this.initialize();
-    
+    await this.initialize()
+
     const result = await this.db.runAsync(
-      `INSERT OR REPLACE INTO users (id, email, name, masterPasswordHash, salt, lastLogin) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [user.id, user.email, user.name || null, user.masterPasswordHash, 
-       user.salt, user.lastLogin || new Date().toISOString()]
-    );
-    
-    return result.lastInsertRowId;
+      `INSERT OR REPLACE INTO users (id, email, name, password) 
+       VALUES (?, ?, ?, ?)`,
+      [user.id, user.correo, user.nombre, user.contraseña],
+    )
+
+    return result.lastInsertRowId
   }
 
   async getUsers() {
-    await this.initialize();
-    
-    return await this.db.getAllAsync(
-      `SELECT * FROM users ORDER BY createdAt DESC`
-    );
+    await this.initialize()
+
+    return await this.db.getAllAsync(`SELECT * FROM users ORDER BY createdAt DESC`)
   }
 
   async getUserById(id) {
-    await this.initialize();
-    
-    return await this.db.getFirstAsync(
-      `SELECT * FROM users WHERE id = ?`,
-      [id]
-    );
+    await this.initialize()
+
+    return await this.db.getFirstAsync(`SELECT * FROM users WHERE id = ?`, [id])
   }
 
   async getUserByEmail(email) {
-    await this.initialize();
-    
-    return await this.db.getFirstAsync(
-      `SELECT * FROM users WHERE email = ?`,
-      [email]
-    );
+    await this.initialize()
+
+    return await this.db.getFirstAsync(`SELECT * FROM users WHERE email = ?`, [email])
   }
 
   async deleteUser(id) {
-    await this.initialize();
-    
-    await this.db.runAsync(
-      `DELETE FROM users WHERE id = ?`,
-      [id]
-    );
+    await this.initialize()
+
+    await this.db.runAsync(`DELETE FROM users WHERE id = ?`, [id])
+  }
+
+  // User update methods
+  async updateUser(id, updates) {
+    await this.initialize()
+    const { name, email, password } = updates
+    const result = await this.db.runAsync(`UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?`, [
+      name || null,
+      email || null,
+      password || null,
+      id,
+    ])
+    return result
+  }
+
+  async getUserStats(userId) {
+    await this.initialize()
+    const vaultResult = await this.db.getAllAsync(`SELECT COUNT(*) as count FROM vaults WHERE userId = ?`, [userId])
+    const noteResult = await this.db.getAllAsync(
+      `SELECT COUNT(*) as count FROM notes WHERE vaultId IN (SELECT id FROM vaults WHERE userId = ?)`,
+      [userId],
+    )
+    return {
+      totalVaults: vaultResult?.[0]?.count || 0,
+      totalNotes: noteResult?.[0]?.count || 0,
+    }
+  }
+
+  async updateUserEmail(userId, newEmail) {
+    await this.initialize()
+    const result = await this.db.runAsync(`UPDATE users SET email = ? WHERE id = ?`, [newEmail, userId])
+    return result
+  }
+
+  async updateUserPassword(userId, newPassword) {
+    await this.initialize()
+    const result = await this.db.runAsync(`UPDATE users SET password = ? WHERE id = ?`, [newPassword, userId])
+    return result
+  }
+
+  async deleteAllNotesByUser(userId) {
+    await this.initialize()
+    const result = await this.db.runAsync(
+      `DELETE FROM notes WHERE vaultId IN (SELECT id FROM vaults WHERE userId = ?)`,
+      [userId],
+    )
+    return result
+  }
+
+  async deactivateAccount(userId) {
+    await this.initialize()
+    const result = await this.db.runAsync(`UPDATE users SET isActive = 0 WHERE id = ?`, [userId])
+    return result
   }
 
   // Vault methods
   async saveVault(vault) {
-    await this.initialize();
-    
+    await this.initialize()
+
     const result = await this.db.runAsync(
-      `INSERT OR REPLACE INTO vaults (id, userId, name, description, isLocked, createdAt) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [vault.id, vault.userId, vault.name, vault.description || null, 
-       vault.isLocked ? 1 : 0, vault.createdAt || new Date().toISOString()]
-    );
-    
-    return result.lastInsertRowId;
+      `INSERT OR REPLACE INTO vaults (id, userId, name, description, createdAt) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [vault.id, vault.userId, vault.name, vault.description || null, vault.createdAt || new Date().toISOString()],
+    )
+
+    return result.lastInsertRowId
   }
 
   async getVaults() {
-    await this.initialize();
-    
+    await this.initialize()
+
     return await this.db.getAllAsync(
       `SELECT v.*, u.email as userEmail, u.name as userName 
        FROM vaults v 
        LEFT JOIN users u ON v.userId = u.id 
-       ORDER BY v.createdAt DESC`
-    );
-  }
-
-  async getVaultById(id) {
-    await this.initialize();
-    
-    return await this.db.getFirstAsync(
-      `SELECT v.*, u.email as userEmail, u.name as userName 
-       FROM vaults v 
-       LEFT JOIN users u ON v.userId = u.id 
-       WHERE v.id = ?`,
-      [id]
-    );
+       ORDER BY v.createdAt DESC`,
+    )
   }
 
   async getVaultsByUser(userId) {
-    await this.initialize();
-    
-    return await this.db.getAllAsync(
-      `SELECT * FROM vaults WHERE userId = ? ORDER BY createdAt DESC`,
-      [userId]
-    );
+    await this.initialize()
+
+    return await this.db.getAllAsync(`SELECT * FROM vaults WHERE userId = ? ORDER BY createdAt DESC`, [userId])
   }
 
   async deleteVault(id) {
-    await this.initialize();
-    
-    await this.db.runAsync(
-      `DELETE FROM vaults WHERE id = ?`,
-      [id]
-    );
+    await this.initialize()
+
+    await this.db.runAsync(`DELETE FROM vaults WHERE id = ?`, [id])
+  }
+
+  async getVaultById(id) {
+    await this.initialize()
+    return await this.db.getFirstAsync(`SELECT * FROM vaults WHERE id = ?`, [id])
+  }
+
+  async updateVault(id, updates) {
+    await this.initialize()
+    const { name, description } = updates
+    await this.db.runAsync(`UPDATE vaults SET name = ?, description = ? WHERE id = ?`, [name, description, id])
   }
 
   // Note methods
   async saveNote(note) {
-    await this.initialize();
-    
-    const now = new Date().toISOString();
+    await this.initialize()
+
+    if (!note || !note.title) {
+      console.error("[v0] Invalid note object:", note)
+      throw new Error("Note title is required")
+    }
+
+    const now = new Date().toISOString()
+    console.log("[v0] Saving note to DB:", { id: note.id, title: note.title, vaultId: note.vaultId })
+
     const result = await this.db.runAsync(
-      `INSERT OR REPLACE INTO notes 
-       (id, vaultId, title, content, isEncrypted, encryptionKey, tags, createdAt, updatedAt) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [note.id, note.vaultId, note.title, note.content || null, 
-       note.isEncrypted ? 1 : 0, note.encryptionKey || null,
-       note.tags ? JSON.stringify(note.tags) : null,
-       note.createdAt || now, now]
-    );
-    
-    return result.lastInsertRowId;
+      `INSERT INTO notes 
+       (id, vaultId, title, content, createdAt, updatedAt) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [note.id, note.vaultId, note.title, note.content || "", note.createdAt || now, now],
+    )
+
+    console.log("[v0] Note saved successfully with ID:", result.lastInsertRowId)
+    return result.lastInsertRowId
   }
 
   async getNotes() {
-    await this.initialize();
-    
-    const notes = await this.db.getAllAsync(
-      `SELECT n.*, v.name as vaultName, v.userId 
-       FROM notes n 
-       LEFT JOIN vaults v ON n.vaultId = v.id 
-       ORDER BY n.updatedAt DESC`
-    );
-    
-    // Parse tags JSON
-    return notes.map(note => ({
-      ...note,
-      tags: note.tags ? JSON.parse(note.tags) : [],
-      isEncrypted: Boolean(note.isEncrypted)
-    }));
-  }
+    await this.initialize()
 
-  async getNoteById(id) {
-    await this.initialize();
-    
-    const note = await this.db.getFirstAsync(
+    return await this.db.getAllAsync(
       `SELECT n.*, v.name as vaultName, v.userId 
        FROM notes n 
        LEFT JOIN vaults v ON n.vaultId = v.id 
-       WHERE n.id = ?`,
-      [id]
-    );
-    
-    if (note) {
-      note.tags = note.tags ? JSON.parse(note.tags) : [];
-      note.isEncrypted = Boolean(note.isEncrypted);
-    }
-    
-    return note;
+       ORDER BY n.updatedAt DESC`,
+    )
   }
 
   async getNotesByVault(vaultId) {
-    await this.initialize();
-    
-    const notes = await this.db.getAllAsync(
-      `SELECT * FROM notes WHERE vaultId = ? ORDER BY updatedAt DESC`,
-      [vaultId]
-    );
-    
-    // Parse tags JSON
-    return notes.map(note => ({
-      ...note,
-      tags: note.tags ? JSON.parse(note.tags) : [],
-      isEncrypted: Boolean(note.isEncrypted)
-    }));
-  }
+    await this.initialize()
 
-  async searchNotes(query, userId = null) {
-    await this.initialize();
-    
-    let sql = `SELECT n.*, v.name as vaultName, v.userId 
-               FROM notes n 
-               LEFT JOIN vaults v ON n.vaultId = v.id 
-               WHERE (n.title LIKE ? OR n.content LIKE ?)`;
-    let params = [`%${query}%`, `%${query}%`];
-    
-    if (userId) {
-      sql += ` AND v.userId = ?`;
-      params.push(userId);
-    }
-    
-    sql += ` ORDER BY n.updatedAt DESC`;
-    
-    const notes = await this.db.getAllAsync(sql, params);
-    
-    // Parse tags JSON
-    return notes.map(note => ({
-      ...note,
-      tags: note.tags ? JSON.parse(note.tags) : [],
-      isEncrypted: Boolean(note.isEncrypted)
-    }));
-  }
-
-  async getNotesByTag(tag, userId = null) {
-    await this.initialize();
-    
-    let sql = `SELECT n.*, v.name as vaultName, v.userId 
-               FROM notes n 
-               LEFT JOIN vaults v ON n.vaultId = v.id 
-               WHERE n.tags LIKE ?`;
-    let params = [`%${tag}%`];
-    
-    if (userId) {
-      sql += ` AND v.userId = ?`;
-      params.push(userId);
-    }
-    
-    sql += ` ORDER BY n.updatedAt DESC`;
-    
-    const notes = await this.db.getAllAsync(sql, params);
-    
-    // Parse tags JSON
-    return notes.map(note => ({
-      ...note,
-      tags: note.tags ? JSON.parse(note.tags) : [],
-      isEncrypted: Boolean(note.isEncrypted)
-    }));
+    return await this.db.getAllAsync(`SELECT * FROM notes WHERE vaultId = ? ORDER BY updatedAt DESC`, [vaultId])
   }
 
   async deleteNote(id) {
-    await this.initialize();
-    
-    await this.db.runAsync(
-      `DELETE FROM notes WHERE id = ?`,
-      [id]
-    );
+    await this.initialize()
+
+    await this.db.runAsync(`DELETE FROM notes WHERE id = ?`, [id])
+  }
+
+  async getNoteById(id) {
+    await this.initialize()
+    return await this.db.getFirstAsync(`SELECT * FROM notes WHERE id = ?`, [id])
+  }
+
+  async updateNote(id, updates) {
+    await this.initialize()
+    const { title, content } = updates
+    const now = new Date().toISOString()
+    await this.db.runAsync(`UPDATE notes SET title = ?, content = ?, updatedAt = ? WHERE id = ?`, [
+      title,
+      content,
+      now,
+      id,
+    ])
+  }
+
+  async searchNotes(query, vaultId = null) {
+    await this.initialize()
+    const searchTerm = `%${query}%`
+    if (vaultId) {
+      return await this.db.getAllAsync(
+        `SELECT * FROM notes WHERE (title LIKE ? OR content LIKE ?) AND vaultId = ? ORDER BY updatedAt DESC`,
+        [searchTerm, searchTerm, vaultId],
+      )
+    }
+    return await this.db.getAllAsync(
+      `SELECT * FROM notes WHERE title LIKE ? OR content LIKE ? ORDER BY updatedAt DESC`,
+      [searchTerm, searchTerm],
+    )
   }
 
   async clearAll() {
-    await this.initialize();
-    
+    await this.initialize()
+
     await this.db.execAsync(`
       DELETE FROM notes;
       DELETE FROM vaults;
       DELETE FROM users;
-    `);
+    `)
   }
 
   async close() {
     if (this.db) {
-      await this.db.closeAsync();
-      this.initialized = false;
-      this.db = null;
+      await this.db.closeAsync()
+      this.initialized = false
+      this.db = null
     }
-  }
-
-  // Transaction support
-  async transaction(callback) {
-    await this.initialize();
-    
-    return await this.db.withTransactionAsync(async () => {
-      return await callback();
-    });
-  }
-
-  // Backup and restore methods
-  async exportDatabase() {
-    await this.initialize();
-    
-    const users = await this.getUsers();
-    const vaults = await this.getVaults();
-    const notes = await this.getNotes();
-    
-    return {
-      users,
-      vaults,
-      notes,
-      exportedAt: new Date().toISOString()
-    };
-  }
-
-  async importDatabase(data) {
-    await this.initialize();
-    
-    return await this.transaction(async () => {
-      // Clear existing data
-      await this.clearAll();
-      
-      // Import users
-      for (const user of data.users) {
-        await this.saveUser(user);
-      }
-      
-      // Import vaults
-      for (const vault of data.vaults) {
-        await this.saveVault(vault);
-      }
-      
-      // Import notes
-      for (const note of data.notes) {
-        await this.saveNote(note);
-      }
-    });
   }
 }
