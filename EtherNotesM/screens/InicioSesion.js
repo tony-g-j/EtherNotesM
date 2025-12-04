@@ -1,23 +1,37 @@
-import { Text, StyleSheet, View, TextInput, ActivityIndicator, Dimensions, TouchableOpacity, Modal } from 'react-native'
-import React, { useState, useEffect } from 'react'
+import {
+  Text,
+  StyleSheet,
+  View,
+  TextInput,
+  ActivityIndicator,
+  Dimensions,
+  TouchableOpacity,
+  Modal,
+  Alert,
+} from "react-native";
+import { useState, useEffect } from "react";
 import Svg, { Path } from "react-native-svg";
-const {width, height} = Dimensions.get('window');
+import UsuarioController from "../controllers/UsuarioController";
 
+const { width, height } = Dimensions.get("window");
+
+const UserController = new UsuarioController();
 
 const PantallaInicial = () => {
-    return (
-        <View style={styles.pantallaInicialContainer}>
+  return (
+    <View style={styles.pantallaInicialContainer}>
+      <Text style={styles.inicioAppText}>ETERNOTES</Text>
+      <ActivityIndicator size="large" color="white" style={{ marginTop: 40 }} />
+    </View>
+  );
+};
 
-            <Text style={styles.inicioAppText}>ETERNOTES</Text>
-            <ActivityIndicator size="large" color="white" style={{marginTop: 40}}/>
-
-        </View>
-    )
-}
-
-
-const Login = () => {
+const Login = ({ onLoginSuccess, navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [correo, setCorreo] = useState("");
+  const [contraseña, setContraseña] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const mostrarModal = () => {
     setModalVisible(true);
@@ -25,261 +39,300 @@ const Login = () => {
 
   const cerrarModal = () => {
     setModalVisible(false);
-  }
+  };
+
+  const handleLogin = async () => {
+    if (!correo || !contraseña) {
+      setError("Por favor completa todos los campos");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const result = await UserController.authenticateUser(correo, contraseña);
+
+      if (result.success) {
+        onLoginSuccess(result.user);
+      } else {
+        setError(result.message);
+        Alert.alert("Error de autenticación", result.message);
+      }
+    } catch (err) {
+      const errorMsg = "Error al iniciar sesión: " + err.message;
+      setError(errorMsg);
+      Alert.alert("Error", errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCrearCuenta = () => {
+    navigation.navigate("Registro");
+  };
 
   return (
     <View style={stylesLogin.containerLogin}>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={cerrarModal}
+      >
+        <View style={modalStyles.modalContainer}>
+          <View style={modalStyles.modalView}>
+            <Text style={modalStyles.modalTitle}>Recuperar Contraseña</Text>
 
-    <Modal
-      animationType='fade'
-      transparent={true}
-      visible={modalVisible}
-      onRequestClose={cerrarModal}
-    >
+            <Text style={modalStyles.modalText}>
+              {" "}
+              Ingresa el correo electrónico asociado a tu cuenta{" "}
+            </Text>
 
-      <View style={modalStyles.modalContainer}>
+            <TextInput
+              style={[
+                stylesLogin.input,
+                { marginBottom: 20, marginTop: 10, zIndex: 99 },
+              ]}
+              placeholder="Tu correo electrónico"
+              placeholderTextColor="#191A2C"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
 
-      <View style={modalStyles.modalView}>
-        <Text style={modalStyles.modalTitle}>Recuperar Contraseña</Text>
-        
-        <Text style={modalStyles.modalText}> Ingresa el correo electrónico asociado a tu cuenta </Text>
+            <View style={{ minHeight: 20, marginBottom: 15 }} />
 
-        <TextInput
-        
-          style={[stylesLogin.input, {marginBottom: 20, marginTop: 10, zIndex: 99}]}
-          placeholder="Tu correo electrónico"
-          placeholderTextColor="#191A2C"
-          keyboardType='email-address'
-          autoCapitalize='none'
-        />
+            <View style={modalStyles.buttonContainer}>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.buttonClose]}
+                onPress={cerrarModal}
+              >
+                <Text style={modalStyles.textStyle}>Cancelar</Text>
+              </TouchableOpacity>
 
-        <View style={{minHeight: 20, marginBottom: 15}} />
-
-        <View style={modalStyles.buttonContainer}>
-
-          <TouchableOpacity style={[modalStyles.button, modalStyles.buttonClose]} onPress={cerrarModal}>
-            <Text style={modalStyles.textStyle}>Cancelar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[modalStyles.button, modalStyles.buttonSend]}>
-            <Text style={modalStyles.textStyle}>Enviar</Text>
-          </TouchableOpacity>
-
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.buttonSend]}
+              >
+                <Text style={modalStyles.textStyle}>Enviar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
-
-      </View>
-
-    </Modal>
-    
+      </Modal>
 
       <View style={stylesLogin.disenoSuperior}>
-        <Svg
-          width={412}
-          height={200}
-          fill="none"
-        >
+        <Svg width={412} height={200} fill="none">
           <Path
             fill="#191A2C"
-            d="M0 0h412v150.242s-53.5 111.955-206 0c-152.5-111.954-206 0-206 0V0Z"/>
+            d="M0 0h412v150.242s-53.5 111.955-206 0c-152.5-111.954-206 0-206 0V0Z"
+          />
         </Svg>
       </View>
 
       <Text style={stylesLogin.titulo}>Inicio de sesión</Text>
 
+      {error ? <Text style={stylesLogin.errorText}>{error}</Text> : null}
+
       <TextInput
         style={stylesLogin.input}
-        placeholder="Correo electronico"
+        placeholder="Correo electrónico"
         placeholderTextColor="#191A2C"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        value={correo}
+        onChangeText={setCorreo}
+        editable={!loading}
       />
 
       <TextInput
         style={stylesLogin.input}
         placeholder="Contraseña"
         placeholderTextColor="#191A2C"
+        secureTextEntry={true}
+        value={contraseña}
+        onChangeText={setContraseña}
+        editable={!loading}
       />
 
-      <TouchableOpacity style={stylesLogin.botonSesion}>
-        <Text style={stylesLogin.botonText}>Iniciar sesión</Text>
+      <TouchableOpacity
+        style={[stylesLogin.botonSesion, loading && stylesLogin.botonDisabled]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text style={stylesLogin.botonText}>Iniciar sesión</Text>
+        )}
       </TouchableOpacity>
 
       <View style={stylesLogin.linksContainer}>
-
         <TouchableOpacity onPress={mostrarModal}>
           <Text style={stylesLogin.linkText}>¿Has olvidado tu contraseña?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleCrearCuenta}>
           <Text style={stylesLogin.linkText}>Crear cuenta</Text>
         </TouchableOpacity>
-
       </View>
 
       <View style={stylesLogin.disenoInferior}>
-        <Svg
-          width={412}
-          height={199}
-          fill="none"
-        >
+        <Svg width={412} height={199} fill="none">
           <Path
-           fill="#191A2C"
-           d="M0 48.122s53 108.274 206 0 206 0 206 0V200H0V48.122Z"/>
+            fill="#191A2C"
+            d="M0 48.122s53 108.274 206 0 206 0 206 0V200H0V48.122Z"
+          />
         </Svg>
       </View>
-
-
     </View>
-
-    
   );
+};
 
+export default function InicioSesion({ onLoginSuccess, navigation }) {
+  const [inicioApp, setInicioApp] = useState(true);
+
+  useEffect(() => {
+    const tiempo = setTimeout(() => {
+      setInicioApp(false);
+    }, 3000);
+
+    return () => clearTimeout(tiempo);
+  }, []);
+
+  if (inicioApp) {
+    return <PantallaInicial />;
+  } else {
+    return <Login onLoginSuccess={onLoginSuccess} navigation={navigation} />;
+  }
 }
-
-export default function InicioSesion() {
-    const [inicioApp, setInicioApp] = useState(true);
-
-    useEffect( () => {
-      const tiempo = setTimeout(() => {
-        setInicioApp(false);
-      }, 3000);
-
-      return () => clearTimeout(tiempo);
-    }, []);
-
-
-
-    if (inicioApp) {
-      return <PantallaInicial/>;
-      } else {
-      return (
-        <Login/>
-      )
-    }
-
-   
-}
-    
 
 const styles = StyleSheet.create({
-
   pantallaInicialContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1B2D45',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#1B2D45",
   },
 
   inicioAppText: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: "bold",
+    color: "white",
     marginTop: 10,
   },
-
 });
 
 const stylesLogin = StyleSheet.create({
-
   containerLogin: {
     flex: 1,
-    backgroundColor: '#1B2D45',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#1B2D45",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 20,
   },
 
   disenoSuperior: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  zIndex: 0,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
   },
 
   disenoInferior: {
-  position: 'absolute',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  zIndex: 0,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
   },
 
   titulo: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 30,
-    alignSelf: 'center',
-    color: '#ffff',
+    alignSelf: "center",
+    color: "#ffff",
     zIndex: 10,
   },
 
   input: {
-    width: '100%',
-    height: 50,
-    backgroundColor: 'white',
-    borderRadius: 25,
+    width: "80%",
+    height: height * 0.065,
+    backgroundColor: "white",
+    borderRadius: 12,
     paddingHorizontal: 20,
     marginBottom: 40,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
-    fontFamily: 'Montserrat',
+    fontFamily: "Montserrat",
     zIndex: 10,
   },
 
   botonSesion: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#191A2C',
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "65%",
+    height: height * 0.06,
+    backgroundColor: "#191A2C",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 0,
     zIndex: 10,
   },
 
+  botonDisabled: {
+    opacity: 0.6,
+  },
+
   botonText: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 
   linksContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
     marginTop: 30,
     paddingHorizontal: 10,
     zIndex: 10,
   },
 
   linkText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
   },
 
-
+  errorText: {
+    color: "#FF6B6B",
+    fontSize: 14,
+    marginBottom: 20,
+    textAlign: "center",
+    fontWeight: "600",
+  },
 });
 
 const modalStyles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.7)",
   },
   modalView: {
     margin: 20,
-    backgroundColor: '#1B2D45',
+    backgroundColor: "#1B2D45",
     borderRadius: 20,
     padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -287,27 +340,27 @@ const modalStyles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
-    width: '85%',
+    width: "85%",
   },
 
   modalTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: "bold",
+    color: "white",
     marginBottom: 15,
   },
 
   modalText: {
     marginBottom: 15,
-    textAlign: 'center',
-    color: '#E5E7EB',
+    textAlign: "center",
+    color: "#E5E7EB",
     fontSize: 14,
   },
 
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
     marginTop: 10,
   },
 
@@ -317,21 +370,21 @@ const modalStyles = StyleSheet.create({
     elevation: 2,
     flex: 1,
     marginHorizontal: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   buttonClose: {
-    backgroundColor: '#6B7280',
+    backgroundColor: "#6B7280",
   },
 
   buttonSend: {
-    backgroundColor: '#191A2C',
+    backgroundColor: "#191A2C",
   },
 
   textStyle: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });

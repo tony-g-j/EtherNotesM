@@ -1,150 +1,266 @@
-import React, { useState } from "react";
 import {
-  View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
+  View,
+  TextInput,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
   ScrollView,
+  Dimensions
 } from "react-native";
+import { useState } from "react";
+import Svg, { Path } from "react-native-svg";
+import UsuarioController from "../controllers/UsuarioController";
 
-export default function RegisterScreen() {
+const { width, height } = Dimensions.get("window");
+
+const UserController = new UsuarioController();
+
+export default function Registro({ navigation, onRegistroSuccess }) {
   const [nombre, setNombre] = useState("");
-  const [pass, setPass] = useState("");
-  const [confirmPass, setConfirmPass] = useState("");
   const [correo, setCorreo] = useState("");
+  const [contraseña, setContraseña] = useState("");
+  const [confirmContraseña, setConfirmContraseña] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const validarFormulario = () => {
+    if (!nombre.trim()) {
+      setError("El nombre es obligatorio");
+      return false;
+    }
+    if (!correo.trim() || !correo.includes("@")) {
+      setError("Ingresa un correo válido");
+      return false;
+    }
+    if (contraseña.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return false;
+    }
+    if (contraseña !== confirmContraseña) {
+      setError("Las contraseñas no coinciden");
+      return false;
+    }
+    return true;
+  };
+
+  const handleRegistro = async () => {
+    setError("");
+
+    if (!validarFormulario()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await UserController.createUser(
+        nombre,
+        correo,
+        contraseña
+      );
+
+      if (result.success) {
+        Alert.alert("Éxito", "Cuenta creada exitosamente");
+        onRegistroSuccess(result.user);
+      } else {
+        setError(result.message);
+        Alert.alert("Error de registro", result.message);
+      }
+    } catch (err) {
+      const errorMsg = "Error al registrar: " + err.message;
+      setError(errorMsg);
+      Alert.alert("Error", errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.topWave} />
-      <View style={styles.formWrapper}>
-        <Text style={styles.title}>Registro De Usuario</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre de usuario"
-          placeholderTextColor="#666"
-          value={nombre}
-          onChangeText={setNombre}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Contrasena"
-          placeholderTextColor="#666"
-          secureTextEntry
-          value={pass}
-          onChangeText={setPass}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Confirmar contrasena"
-          placeholderTextColor="#666"
-          secureTextEntry
-          value={confirmPass}
-          onChangeText={setConfirmPass}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Correo electronico"
-          placeholderTextColor="#666"
-          keyboardType="email-address"
-          value={correo}
-          onChangeText={setCorreo}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Telefono"
-          placeholderTextColor="#666"
-          keyboardType="numeric"
-          value={telefono}
-          onChangeText={setTelefono}
-        />
-
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Ingresar</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.footerText}>
-          ¿Ya tienes una cuenta? Inicia sesión
-        </Text>
+    <ScrollView contentContainerStyle={styles.containerRegistro}>
+      <View style={styles.disenoSuperior}>
+        <Svg width={412} height={200} fill="none">
+          <Path
+            fill="#191A2C"
+            d="M0 0h412v150.242s-53.5 111.955-206 0c-152.5-111.954-206 0-206 0V0Z"
+          />
+        </Svg>
       </View>
 
-      <View style={styles.bottomWave} />
+      <Text style={styles.titulo}>Crear Cuenta</Text>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      <TextInput
+        style={styles.input}
+        placeholder="Nombre completo"
+        placeholderTextColor="#191A2C"
+        value={nombre}
+        onChangeText={setNombre}
+        editable={!loading}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Correo electrónico"
+        placeholderTextColor="#191A2C"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        value={correo}
+        onChangeText={setCorreo}
+        editable={!loading}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Contraseña"
+        placeholderTextColor="#191A2C"
+        secureTextEntry={true}
+        value={contraseña}
+        onChangeText={setContraseña}
+        editable={!loading}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Confirmar contraseña"
+        placeholderTextColor="#191A2C"
+        secureTextEntry={true}
+        value={confirmContraseña}
+        onChangeText={setConfirmContraseña}
+        editable={!loading}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Teléfono (opcional)"
+        placeholderTextColor="#191A2C"
+        keyboardType="phone-pad"
+        value={telefono}
+        onChangeText={setTelefono}
+        editable={!loading}
+      />
+
+      <TouchableOpacity
+        style={[styles.botonRegistro, loading && styles.botonDisabled]}
+        onPress={handleRegistro}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text style={styles.botonText}>Registrarse</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.goBack()}>
+        <Text style={styles.linkText}>¿Ya tienes cuenta? Inicia Sesión</Text>
+      </TouchableOpacity>
+
+      <View style={styles.disenoInferior}>
+        <Svg width={412} height={199} fill="none">
+          <Path
+            fill="#191A2C"
+            d="M0 48.122s53 108.274 206 0 206 0 206 0V200H0V48.122Z"
+          />
+        </Svg>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  containerRegistro: {
     flexGrow: 1,
-    backgroundColor: "#0D1B2A", 
+    backgroundColor: "#1B2D45",
     alignItems: "center",
-    paddingTop: 40,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
 
-  topWave: {
-    width: "100%",
-    height: 180,
-    backgroundColor: "#0D1B2A",
-    borderBottomLeftRadius: 200,
-    borderBottomRightRadius: 200,
+  disenoSuperior: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
   },
 
-  formWrapper: {
-    width: "85%",
-    backgroundColor: "#0D1B2A",
-    marginTop: -60,
-    padding: 30,
-    borderRadius: 20,
+  disenoInferior: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
   },
 
-  title: {
-    fontSize: 24,
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 25,
+  titulo: {
+    fontSize: 28,
     fontWeight: "bold",
+    marginBottom: 20,
+    marginTop: 40,
+    alignSelf: "center",
+    color: "#ffff",
+    zIndex: 10,
   },
 
   input: {
-    backgroundColor: "#E5E5E5",
-    padding: 15,
-    borderRadius: 15,
+    width: "80%",
+    height: 50,
+    backgroundColor: "white",
+    borderRadius: 12,
+    paddingHorizontal: 20,
     marginBottom: 15,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    fontFamily: "Montserrat",
+    zIndex: 10,
   },
 
-  button: {
-    backgroundColor: "#122b44ff",
-    padding: 15,
-    borderRadius: 15,
+  botonRegistro: {
+    width: "70%",
+    height: height * 0.05,
+    backgroundColor: "#191A2C",
+    borderRadius: 12,
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 15,
+    zIndex: 10,
   },
 
-  buttonText: {
-    color: "#fff",
+  botonDisabled: {
+    opacity: 0.6,
+  },
+
+  botonText: {
+    color: "white",
     fontSize: 18,
     fontWeight: "bold",
   },
 
-  footerText: {
+  linkText: {
+    color: "white",
+    fontSize: 14,
     textAlign: "center",
     marginTop: 20,
-    color: "#ccc",
+    zIndex: 10,
   },
 
-  bottomWave: {
-    width: "100%",
-    height: 200,
-    backgroundColor: "#0D1B2A",
-    borderTopLeftRadius: 200,
-    borderTopRightRadius: 200,
-    marginTop: 30,
+  errorText: {
+    color: "#FF6B6B",
+    fontSize: 14,
+    marginBottom: 15,
+    textAlign: "center",
+    fontWeight: "600",
+    zIndex: 10,
   },
 });

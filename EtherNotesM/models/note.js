@@ -1,32 +1,23 @@
 export class Note {
-  constructor(id, name, category, vaultId, content, date) {
-    this.id = id;
-    this.name = name;
-    this.category = category;
-    this.vaultId = vaultId;
-    this.content = content || '';
-    this.date = date || new Date();
+  constructor(id, title, content, vaultId, createdAt) {
+    this.id = id
+    this.title = title
+    this.content = content || ""
+    this.vaultId = vaultId
+    this.createdAt = createdAt || new Date()
   }
 
   toJSON() {
     return {
       id: this.id,
-      name: this.name,
-      date: this.date,
-      category: this.category,
-      vaultId: this.vaultId,
+      title: this.title,
       content: this.content,
-    };
+      vaultId: this.vaultId,
+      createdAt: this.createdAt,
+    }
   }
 
   static fromJSON(json) {
-    return new Note(
-      json.id,
-      json.name,
-      json.category,
-      json.vaultId,
-      json.content,
-      new Date(json.date)
-    );
+    return new Note(json.id, json.title, json.content, json.vaultId, new Date(json.createdAt))
   }
 }

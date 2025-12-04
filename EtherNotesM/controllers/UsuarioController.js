@@ -1,139 +1,130 @@
-import { Database } from '../database/Database';
-import { User } from '../models/usuario';
+import { Database } from "../database/DatabaseService"
+import { User } from "../models/usuario"
 
-export class UserController {
+export default class UsuarioController {
   constructor() {
-    this.db = Database.getInstance();
+    this.db = Database.getInstance()
   }
 
   async createUser(nombre, correo, contraseña) {
-    await this.db.initialize();
-    
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    const user = new User(id, nombre, correo, contraseña);
-    
-    await this.db.saveUser(user.toJSON());
-    return user;
-  }
+    try {
+      await this.db.initialize()
 
-  async getAllUsers() {
-    await this.db.initialize();
-    const users = await this.db.getUsers();
-    return users.map(user => User.fromJSON(user));
-  }
+      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+      const user = new User(id, nombre, correo, contraseña)
 
-  async getUserById(id) {
-    await this.db.initialize();
-    const user = await this.db.getUserById(id);
-    return user ? User.fromJSON(user) : null;
-  }
-
-  async updateUser(id, updates) {
-    await this.db.initialize();
-    const user = await this.db.getUserById(id);
-    
-    if (!user) return null;
-    
-    const updatedUser = { ...user, ...updates };
-    await this.db.saveUser(updatedUser);
-    return User.fromJSON(updatedUser);
-  }
-
-  async deleteUser(id) {
-    await this.db.initialize();
-    const user = await this.db.getUserById(id);
-    
-    if (!user) return false;
-    
-    await this.db.deleteUser(id);
-    return true;
+      await this.db.saveUser(user)
+      return { success: true, user, message: "Usuario creado exitosamente" }
+    } catch (error) {
+      return { success: false, message: error.message }
+    }
   }
 
   async authenticateUser(correo, contraseña) {
-    await this.db.initialize();
-    
-    let user;
-    if (this.db.getUserByEmail) {
-      user = await this.db.getUserByEmail(correo);
-    } else {
-      const users = await this.db.getUsers();
-      user = users.find(u => u.correo === correo);
+    try {
+      await this.db.initialize()
+
+      const userData = await this.db.getUserByEmail(correo)
+
+      if (!userData) {
+        return { success: false, message: "Usuario no encontrado" }
+      }
+
+      if (userData.password !== contraseña) {
+        return { success: false, message: "Contraseña incorrecta" }
+      }
+
+      const user = new User(userData.id, userData.name, userData.email, userData.password)
+
+      return { success: true, user, message: "Login exitoso" }
+    } catch (error) {
+      return { success: false, message: "Error en autenticación: " + error.message }
     }
-    
-    if (!user) return null;
-    
-    const passwordMatches = user.contraseña === contraseña;
-    
-    return passwordMatches ? User.fromJSON(user) : null;
   }
 
-  async getUserByEmail(correo) {
-    await this.db.initialize();
-    
-    if (this.db.getUserByEmail) {
-      const user = await this.db.getUserByEmail(correo);
-      return user ? User.fromJSON(user) : null;
+  async getUserById(id) {
+    try {
+      await this.db.initialize()
+      const userData = await this.db.getUserById(id)
+
+      if (!userData) return null
+
+      return new User(userData.id, userData.name, userData.email, userData.password)
+    } catch (error) {
+      console.error("Error al obtener usuario:", error)
+      return null
     }
-    
-    const users = await this.db.getUsers();
-    const user = users.find(u => u.correo === correo);
-    return user ? User.fromJSON(user) : null;
   }
 
-  
-  async changePassword(userId, newPassword) {
-    await this.db.initialize();
-    
-    const user = await this.db.getUserById(userId);
-    if (!user) return false;
-    
-    const updatedUser = {
-      ...user,
-      contraseña: newPassword, // USEN HASH PARA ESTA COSA
-      lastPasswordChange: new Date().toISOString()
-    };
-    
-    await this.db.saveUser(updatedUser);
-    return true;
+  async getAllUsers() {
+    try {
+      await this.db.initialize()
+      const users = await this.db.getUsers()
+      return users.map((u) => new User(u.id, u.name, u.email, u.password))
+    } catch (error) {
+      console.error("Error al obtener usuarios:", error)
+      return []
+    }
   }
 
-  async updateLastLogin(userId) {
-    await this.db.initialize();
-    
-    const user = await this.db.getUserById(userId);
-    if (!user) return false;
-    
-    const updatedUser = {
-      ...user,
-      lastLogin: new Date().toISOString()
-    };
-    
-    await this.db.saveUser(updatedUser);
-    return true;
+  async deleteUser(id) {
+    try {
+      await this.db.initialize()
+      await this.db.deleteUser(id)
+      return { success: true, message: "Usuario eliminado" }
+    } catch (error) {
+      return { success: false, message: error.message }
+    }
+  }
+
+  async updateUserEmail(id, newEmail) {
+    try {
+      await this.db.initialize()
+      await this.db.updateUserEmail(id, newEmail)
+      return { success: true, message: "Correo actualizado exitosamente" }
+    } catch (error) {
+      return { success: false, message: error.message }
+    }
+  }
+
+  async updateUserPassword(id, newPassword) {
+    try {
+      await this.db.initialize()
+      await this.db.updateUserPassword(id, newPassword)
+      return { success: true, message: "Contraseña actualizada exitosamente" }
+    } catch (error) {
+      return { success: false, message: error.message }
+    }
   }
 
   async getUserStats(userId) {
-    await this.db.initialize();
-    
-    const user = await this.db.getUserById(userId);
-    if (!user) return null;
-    
-    const vaults = await this.db.getVaultsByUser(userId);
-    
-    const allNotes = await this.db.getNotes();
-    const userNotes = allNotes.filter(note => {
-      const vault = vaults.find(v => v.id === note.vaultId);
-      return vault !== undefined;
-    });
-    
-    return {
-      userId,
-      nombre: user.nombre,
-      correo: user.correo,
-      vaultCount: vaults.length,
-      noteCount: userNotes.length,
-      lastLogin: user.lastLogin,
-      createdAt: user.createdAt
-    };
+    try {
+      await this.db.initialize()
+      const stats = await this.db.getUserStats(userId)
+      return stats
+    } catch (error) {
+      console.error("Error al obtener estadísticas:", error)
+      return { totalVaults: 0, totalNotes: 0 }
+    }
+  }
+
+  async deleteAllNotes(userId) {
+    try {
+      await this.db.initialize()
+      await this.db.deleteAllNotesByUser(userId)
+      return { success: true, message: "Todas las notas han sido eliminadas" }
+    } catch (error) {
+      return { success: false, message: error.message }
+    }
+  }
+
+  async deactivateAccount(id) {
+    try {
+      await this.db.initialize()
+      await this.db.deactivateAccount(id)
+      return { success: true, message: "Cuenta desactivada" }
+    } catch (error) {
+      return { success: false, message: error.message }
+    }
   }
 }
